@@ -1,6 +1,5 @@
 # History-Dependent Decision-Making across Species
 
-## Introduction
 This repository hosts the code and supplementary materials for the paper "History-Dependent Decision-Making across Species." Our research delves into the decision-making behaviors of humans and mice, revealing a shared cognitive strategy of history-dependent evidence accumulation.
 
 > **History-Dependent Decision-Making across Species**  
