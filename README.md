@@ -62,7 +62,7 @@ Urai, A., & Brain Laboratory, T. I. (2023). History-Dependent Decision-Making ac
 ```
 
 ## License
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+This project is licensed under the MIT License - see the [LICENSE.md](https://github.com/kiante-fernandez/2023_choicehistory_HSSM/blob/main/LICENSE) file for details.
 
 ## Contact
 For queries, please reach out to the corresponding author Anne Urai, Leiden University, at a.e.urai@fsw.leidenuniv.nl.
