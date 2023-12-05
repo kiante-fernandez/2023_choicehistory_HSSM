@@ -4,11 +4,10 @@
 This repository hosts the code and supplementary materials for the paper "History-Dependent Decision-Making across Species." Our research delves into the decision-making behaviors of humans and mice, revealing a shared cognitive strategy of history-dependent evidence accumulation.
 
 > **History-Dependent Decision-Making across Species**  
-> Swatantra Dhara<sup>1</sup>, Kianté Fernnadez<sup>2</sup>, Alexander Fengler<sup>3</sup>, and Anne Urai<sup>4</sup>  
-> <sup>1</sup>Department of Biotechnology, Indian Institute of Technology, Kharagpur, India  
-> <sup>2</sup>Department of Psychology, University of California, Los Angeles, CA, USA  
-> <sup>3</sup>Department of Cognitive, Linguistic and Psychological Sciences, Brown University, USA  
-> <sup>4</sup>Department of Psychology, Leiden University, The Netherlands 
+> Kianté Fernnadez<sup>2</sup>, Alexander Fengler<sup>2</sup>, and Anne Urai<sup>3</sup>  
+> <sup>1</sup>Department of Psychology, University of California, Los Angeles, CA, USA  
+> <sup>2</sup>Department of Cognitive, Linguistic and Psychological Sciences, Brown University, USA  
+> <sup>3</sup>Department of Psychology, Leiden University, The Netherlands 
 
 ## Abstract
 In our study, we analyze decision-making behaviors in humans and mice, uncovering a common cognitive strategy involving history-dependent evidence accumulation. The study reveals that individual differences in choice repetition are influenced by a history-dependent bias in the rate of evidence accumulation, rather than its starting point, emphasizing the importance of evidence integration across multiple temporal scales. This discovery is crucial for understanding decision-making processes across mammalian species and sets the foundation for future research into the neural dynamics of these phenomena.
