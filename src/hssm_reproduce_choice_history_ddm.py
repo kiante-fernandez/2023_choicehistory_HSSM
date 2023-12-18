@@ -33,19 +33,31 @@ num_subjects = 5
 subsample = elife_data[elife_data['subj_idx'].isin(elife_data.groupby('subj_idx').size().sample(num_subjects).index)]
 
 # %%
-# Define a basic hierarchical model
+# Define models
+model_names = [
+    "ddm_nohist_stimcat", 
+    "ddm_nohist_stimcat_dummycode", 
+    "ddm_nohist_stimcat_reducedrankcode", 
+    "ddm_prevresp_v", 
+    "ddm_prevresp_z", 
+    "ddm_stimcat_prevresp_zv", 
+    "ddm_prevresp_zv"
+]
 
-nohist_stimcat = make_model(subsample, "ddm_nohist_stimcat")
-nohist_stimcat_dummycode = make_model(subsample, "ddm_nohist_stimcat_dummycode")
-nohist_stimcat_reducedrankcode = make_model(subsample, "ddm_nohist_stimcat_reducedrankcode")
-prevresp_v = make_model(subsample, "ddm_prevresp_v")
-prevresp_z = make_model(subsample, "ddm_prevresp_z")
-stimcat_prevresp_zv = make_model(subsample, "ddm_stimcat_prevresp_zv")
-prevresp_zv = make_model(subsample, "ddm_prevresp_zv")
-
-# Sample from the posterior for this model
-model_res = nohist_stimcat.sample(chains=1, cores=1, draws=100, tune=100)
+ddm_models = {name: make_model(subsample, name) for name in model_names}
 
 # %%
-az.summary(model_res)
-az.plot_trace(model_res);
+# Parameters for sampling
+sampling_params = {
+    "chains": 1,
+    "cores": 1,
+    "draws": 100,
+    "tune": 100
+}
+# Sample from the posterior for each model
+model_results = {name: model.sample(**sampling_params) for name, model in models.items()}
+# model_res1 = nohist_stimcat.sample(chains=1, cores=1, draws=100, tune=100)
+
+# %%
+# az.summary(model_res1)
+# az.plot_trace(model_res1);
