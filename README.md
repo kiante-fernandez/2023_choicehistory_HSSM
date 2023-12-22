@@ -53,6 +53,29 @@ In our study, we analyze decision-making behaviors in humans and mice, uncoverin
    figure1c_history_strategy.py
    ```
 
+### Contribute to the repo
+
+We advocate for a lightweight, but still somewhat rigorous approach to collaborative coding in this repo.
+Here are some basic principles and minimal examples for corresponding terminal commands:
+
+1. Never work on the main branch directly. Instead begin your work in one of two ways:
+
+ This avoids unnecessary conflicts that stall work leading to tedious git debugging, and moreover keeps a cleaner record of tasks completed via merges to main (see below). 
+ In your local terminal type `git checkout -b my-expressive-branch-name`. This will switch you to the branch `my-expressive-branch-name`. You complete your current task in there, then push (follow the instructions in the terminal when pushing from your local branch). We can then turn this branch into a pull-request (PR) (this is an option on the github page gui as well). Pull-requests can then be reviewed, commented, revised and eventually merged into the main branch.
+ Once a branch is merged into main, it can be deleted. 
+
+ If you are currently unsure which branch your are on, type `git branch -a` which will list all the branches available and highlight the one your are currently working in.
+
+ You can in general switch between pre-existing branches via `git checkout branch-name`.
+
+2. For every commit, do your best to capture what was done in a concise commit message. Pushing a commit will usually follow the following sequence:
+
+- `git add .` (add new files to be tracked, you may sometimes not want this)
+- `git commit -m 'my expressive commit message'`
+- `git push` (this pushes the changes to github, if you do this from a new branch that you defined locally, you have to follow the instruction on the screen here)
+
+3. Comment your functions, including all input arguments. At best, directly use valid doc strings. [Here](https://www.datacamp.com/tutorial/docstrings-python) is a little tutorial on doc strings in case you wonder about the right format. This is important for collaborators / reviewers of pull requests to digest the new code.
+
 ## Citing This Work
 If you use this research or the accompanying code in your work, please cite:
 ```
