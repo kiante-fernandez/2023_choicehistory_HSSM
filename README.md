@@ -61,14 +61,14 @@ Here are some basic principles and minimal examples for corresponding terminal c
 1. Never work on the main branch directly. Instead begin your work in one of two ways:
 
  This avoids unnecessary conflicts that stall work leading to tedious git debugging, and moreover keeps a cleaner record of tasks completed via merges to main (see below). 
- In your local terminal type `git checkout -b my-expressive-branch-name`. This will switch you to the branch `my-expressive-branch-name`. You complete your current task in there, then push (follow the instructions in the terminal when pushing from your local branch). We can then turn this branch into a pull-request (PR) (this is an option on the github page gui as well). Pull-requests can then be reviewed, commented, revised and eventually merged into the main branch.
- Once a branch is merged into main, it can be deleted. 
+ In your local terminal type `git checkout -b my-expressive-branch-name`. This will switch you to the branch `my-expressive-branch-name`. You complete your current task in there, then push. Follow the instructions in the terminal when pushing from your local branch. Git will ask you to execute the following terminal command: 'git push --set-upstream origin my-expressive-branch-name'. We can then turn this branch into a pull-request (PR) (this is an option on the github page gui as well). Pull-requests can then be reviewed, commented, revised and eventually merged into the main branch.
+ Once a branch is merged into main, it can be deleted.
 
  If you are currently unsure which branch your are on, type `git branch -a` which will list all the branches available and highlight the one your are currently working in.
 
  You can in general switch between pre-existing branches via `git checkout branch-name`.
 
-2. For every commit, do your best to capture what was done in a concise commit message. Pushing a commit will usually follow the following sequence:
+1. For every commit, do your best to capture what was done in a concise commit message. Pushing a commit will usually follow the following sequence:
 
 - `git add .` (add new files to be tracked, you may sometimes not want this)
 - `git commit -m 'my expressive commit message'`
