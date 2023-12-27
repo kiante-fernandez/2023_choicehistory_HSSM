@@ -41,25 +41,27 @@ def make_model(data, mname_full):
     model_specs = {
     'nohist_stimcat': [
         {"name": "v", 
-         "formula": "v ~ 0 + C(coherence) + (0+ C(coherence)|subj_idx)",
+         "formula": "v ~ 0 + C(coherence) + (0+ C(coherence)|subj_idx)", #use for compare with continuous get a jumbo running
          "link": "identity"}
     ],
-    'nohist_stimcat_dummycode': [
-        {"name": "v", 
-         "formula": "v ~ 0 + C(coherence, Treatment) + (0 + C(coherence, Treatment)|subj_idx)", 
-         "link": "identity"},
-        {"name": "z", 
-         "formula": "z ~ 1 + (1|subj_idx)", 
-         "link": "identity"}
-    ],
-    'nohist_stimcat_reducedrankcode': [
-        {"name": "v", 
-         "formula": "v ~ 0 + C(coherence, Treatment(0)) + (0 + C(coherence, Treatment(0))|subj_idx)", 
-         "link": "identity"},
-        {"name": "z", 
-         "formula": "z ~ 1 + (1|subj_idx)", 
-         "link": "identity"}
-    ],
+    # 'nohist_stimcat_dummycode': [
+    #     {"name": "v", 
+    #      "formula": "v ~ 0 + C(coherence, Treatment) + (0 + C(coherence, Treatment)|subj_idx)", 
+    #      "link": "identity"},
+    #     {"name": "z", 
+    #      "formula": "z ~ 1 + (1|subj_idx)", 
+    #      "link": "identity"}
+    # ],
+    # 'nohist_stimcat_reducedrankcode': [
+    #     {"name": "v", 
+    #      "formula": "v ~ 0 + C(coherence, Treatment(0)) + (0 + C(coherence, Treatment(0))|subj_idx)", 
+    #      "link": "identity"},
+    #     {"name": "z", 
+    #      "formula": "z ~ 1 + (1|subj_idx)", 
+    #      "link": "identity"}
+    # ],
+    # TODO add the model with continuous coherence and stimulus 
+    
     'nohist': [
         {"name": "v", 
          "formula": "v ~ 1 + stimulus + (1 + stimulus|subj_idx)", 

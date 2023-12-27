@@ -19,6 +19,9 @@ from utils_plot import results_long2wide_hddmnn, corrfunc
 # ============================================ #
 
 # Get around a problem with saving regression outputs in Python 3
+# TODO look at the new saving protocal following the InferenceData with netCDF4
+# see: https://python.arviz.org/en/stable/getting_started/XarrayforArviZ.html
+
 def savePatch(self, fname):
     import pickle
     with open(fname, 'wb') as f:
@@ -28,7 +31,7 @@ hssm.HSSM.savePatch = savePatch
 
 def run_model(data, modelname, mypath, n_samples=1000, trace_id=0):
 
-    from hssm_modelspec import make_model # specifically for HDDMnn models
+    from hssm_modelspec import make_model # specifically for HSSM models
 
     print('HSSM version: ', hssm.__version__)
 

@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 import hssm
 
+from ssms.basic_simulators.simulator import simulator
 hssm.set_floatX("float32")
 
 from hssm_modelspec import make_model # specifically for hssm models
@@ -24,7 +25,6 @@ script_dir = os.path.dirname(os.path.realpath(__file__))
 data_file_path = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM', 'data')
 elife_data = pd.read_csv(os.path.join(data_file_path, 'visual_motion_2afc_fd.csv'))
 
-elife_data = pd.read_csv(os.path.join(data_file_path, 'visual_motion_2afc_fd.csv'))
 elife_data['response'] = elife_data['response'].replace({0: -1, 1: 1})
 
 # Define the number of subjects you want to sample
@@ -49,15 +49,17 @@ ddm_models = {name: make_model(subsample, name) for name in model_names}
 # %%
 # Parameters for sampling
 sampling_params = {
-    "chains": 1,
-    "cores": 1,
-    "draws": 100,
-    "tune": 100
+    "chains": 4,
+    "cores": 4,
+    "draws": 1000,
+    "tune": 1000
 }
 # Sample from the posterior for each model
-model_results = {name: model.sample(**sampling_params) for name, model in models.items()}
+model_results = {name: model.sample(**sampling_params) for name, model in ddm_models.items()}
 # model_res1 = nohist_stimcat.sample(chains=1, cores=1, draws=100, tune=100)
 
 # %%
 # az.summary(model_res1)
 # az.plot_trace(model_res1);
+# %% save test
+#model_results[].to_netcdf("inference_ddm_nohist_stimcat.nc")
