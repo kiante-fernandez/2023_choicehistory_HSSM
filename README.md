@@ -58,6 +58,78 @@ If you use this research or the accompanying code in your work, please cite:
 ```
 Urai, A., & Brain Laboratory, T. I. (2023). History-Dependent Decision-Making across Species. 2023 Conference on Cognitive Computational Neuroscience. Oxford, UK. https://doi.org/10.32470/CCN.2023.1119-0
 ```
+## Staying Up-to-Date with Repository Changes
+
+As a contributor to a GitHub repository, it's crucial to stay current with the ongoing changes and updates. By combining regular synchronization methods with a rebase workflow, you can effectively contribute to and stay informed about the repository's developments.
+
+### Regularly Sync Your Fork
+If you have forked the repository, ensure it's frequently updated with the main repository's latest changes.
+1. **Add the Original Repository as a Remote**:
+   ```
+   git remote add upstream https://github.com/kiante-fernandez/2023_choicehistory_HSSM
+   ```
+   This adds the main repository as an upstream remote.
+2. **Fetch Upstream Changes**:
+   ```
+   git fetch upstream
+   ```
+   Fetches the latest changes.
+3. **Merge Changes into Your Fork**:
+   ```
+   git merge upstream/main
+   ```
+   Merges the latest changes into your local repository.
+4. **Push Updates to Your Fork**:
+   ```
+   git push
+   ```
+   Updates your fork on GitHub.
+
+### Enhanced Workflow Using Rebase
+Incorporate rebasing to keep your branch up-to-date with the main branch.
+
+1. **Sync main Branch**:
+   - Switch to the main branch:
+     ```
+     git checkout main
+     ```
+   - Pull the latest changes:
+     ```
+     git pull
+     ```
+
+2. **Work on Your Branch**:
+   - Switch to your feature or fix branch:
+     ```
+     git checkout yourbranchname
+     ```
+   - Rebase with the main branch:
+     ```
+     git rebase origin/main
+     ```
+
+3. **Resolve Conflicts if Any During Rebase**:
+   When you encounter conflicts during a rebase, Visual Studio Code (VSCode) can be particularly useful for resolving them. If you're using VSCode, it highlights the differences and provides options to accept either change or both. You can choose 'Accept Incoming Change', 'Accept Current Change', or 'Accept Both Changes' for each conflict. This graphical interface makes it easier to understand and resolve conflicts.
+   
+   - Manually edit and resolve any conflicts.
+   - Mark as resolved and continue rebasing:
+     ```
+     git add [file_name]
+     git rebase --continue
+     ```
+
+4. **Push Changes**:
+   - Push changes to your branch, use force push if necessary after rebasing:
+     ```
+     git push origin yourbranchname [--force]
+     ```
+
+### Review Pull Requests and Issues
+Regularly review open pull requests and issues to understand ongoing changes and discussions.
+
+### Set Up Notifications Appropriately
+Configure your GitHub notifications for relevant updates
+
 
 ## License
 This project is licensed under the MIT License - see the [LICENSE.md](https://github.com/kiante-fernandez/2023_choicehistory_HSSM/blob/main/LICENSE) file for details.
