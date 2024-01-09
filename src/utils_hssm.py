@@ -19,17 +19,45 @@ from utils_plot import results_long2wide_hddmnn, corrfunc
 # ============================================ #
 
 # Get around a problem with saving regression outputs in Python 3
-# TODO look at the new saving protocal following the InferenceData with netCDF4
+# TODO look at the new saving protocol following the InferenceData with netCDF4
 # see: https://python.arviz.org/en/stable/getting_started/XarrayforArviZ.html
 
-def savePatch(self, fname):
-    import pickle
-    with open(fname, 'wb') as f:
-        pickle.dump(self, f)
         
-hssm.HSSM.savePatch = savePatch
+def saveInferenceData(model, fname):
+    model.to_netcdf(fname)
 
-def run_model(data, modelname, mypath, n_samples=1000, trace_id=0):
+import arviz as az
+
+def dic(inference_data):
+    """
+    Calculate the Deviance Information Criterion (DIC) for a given model.
+
+    Parameters:
+    inference_data (arviz.InferenceData): An ArviZ InferenceData object containing the posterior samples
+
+    Returns:
+    float: The computed DIC value.
+    """
+
+    # Extract log likelihood from the inference data
+    log_likelihood = inference_data.log_likelihood
+
+    # Calculate the point-wise deviance
+    D_bar = -2 * np.mean(log_likelihood)
+
+    # Calculate the effective number of parameters
+    p_D = 2 * (D_bar + 2 * np.mean(log_likelihood) - np.mean(log_likelihood))
+
+    # Calculate DIC
+    dic = D_bar + p_D
+
+    return dic
+
+
+# Assuming `HSSM` is the class of your HSSM objects and `inference_data` is the InferenceData attribute
+hssm.HSSM.saveInferenceData = saveInferenceData
+
+def run_model(data, modelname, mypath, sampling_params, trace_id=0):
 
     from hssm_modelspec import make_model # specifically for HSSM models
 
@@ -46,34 +74,37 @@ def run_model(data, modelname, mypath, n_samples=1000, trace_id=0):
 
     print("begin sampling") # this is the core of the fitting
 
-    # If you are running multiple models simultaneously, make sure to name the .db files differently, otherwise they might all 
-    # write to the same location and when HDDM tries to save the model by consulting the .db file it'll just get a jumble.
-    m.sample(n_samples, burn = np.max([n_samples/10, 100]),
-             dbname= os.path.join(mypath, 'traces.db'), 
-             db='pickle')
+    # Sample from the model
+    inference_data = m.sample(**sampling_params)
 
     print('saving model itself')
-    m.savePatch(os.path.join(mypath, 'model.mdl')) # use the patched code
+    #saveInferenceData(inference_data, os.path.join(mypath, f'{modelname}_model.nc'))
+    #m.saveInferenceData(os.path.join(mypath, f'{modelname}_model.nc'))
+
+    # Save the InferenceData object
+    inference_data.to_netcdf(os.path.join(mypath, f'{modelname}_model.nc'))
     
     print("save model comparison indices")
     df = dict()
-    df['dic'] = [m.dic]
-    df['aic'] = [aic(m)]
-    df['bic'] = [bic(m)]
-    df2 = pd.DataFrame(df)
-    df2.to_csv(os.path.join(mypath, 'model_comparison.csv'))
+    import arviz as az
+    df = dict()
+    df['dic'] = dic(inference_data)['rt,response'].values.item()
+    df['waic'] = az.waic(inference_data).elpd_waic
+    df['loo'] = az.loo(inference_data).elpd_loo
+    df2 = pd.DataFrame(list(df.items()), columns=['Metric', 'Value'])
+    df2.to_csv(os.path.join(mypath, f'{modelname}_model_comparison.csv'))
 
     # save useful output
     print("saving summary stats")
     # results = m.gen_stats().reset_index()  # point estimate for each parameter and subject
-    results =  az.summary(m).reset_index()  # point estimate for each parameter and subject
-    results.to_csv(os.path.join(mypath, 'results_combined.csv'))
+    results =  az.summary(inference_data).reset_index()  # point estimate for each parameter and subject
+    results.to_csv(os.path.join(mypath, f'{modelname}_results_combined.csv'))
 
     print("saving traces")
     # get the names for all nodes that are available here
-    group_traces = m.get_group_traces()
-    group_traces.to_csv(os.path.join(mypath, 'group_traces.csv'))
-
+    group_traces = inference_data.posterior.to_dataframe()
+    group_traces.to_csv(os.path.join(mypath, f'{modelname}_group_traces.csv'))    
+    
     return m
 
 
