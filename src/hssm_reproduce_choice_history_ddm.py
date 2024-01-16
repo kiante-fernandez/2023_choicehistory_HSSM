@@ -50,22 +50,21 @@ model_names = [
     "ddm_nohist_stimcat", 
 ]
 
-ddm_models = {name: make_model(subsample, name) for name in model_names}
+#ddm_models = {name: make_model(subsample, name) for name in model_names}
 
 # %% parameter estimation
 # Parameters for sampling
 sampling_params = {
     "sampler": "nuts_numpyro",
-    "chains": 1,
-    "cores": 1,
+    "chains": 4,
+    "cores": 4,
     "draws": 100,
     "tune": 0,
     "idata_kwargs": dict(log_likelihood=True)  # return log likelihood
 }
-# Sample from the posterior for each model
 
-#model_results = {name: model.sample(**sampling_params) for name, model in ddm_models.items()}
-model_run_results = {name: run_model(model, name, script_dir, **sampling_params) for name, model in ddm_models.items()}
+# Sample from the posterior for each model
+model_run_results = {name: run_model(subsample, name, script_dir, **sampling_params) for name in model_names}
 # %%
 # az.summary(model_res1)
 # az.plot_trace(model_res1);

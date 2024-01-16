@@ -53,17 +53,23 @@ def dic(inference_data):
 
     return dic
 
-
 # Assuming `HSSM` is the class of your HSSM objects and `inference_data` is the InferenceData attribute
 hssm.HSSM.saveInferenceData = saveInferenceData
 
-def run_model(data, modelname, mypath, sampling_params, trace_id=0):
+def run_model(data, modelname, mypath, trace_id=0, **kwargs):
 
     from hssm_modelspec import make_model # specifically for HSSM models
 
     print('HSSM version: ', hssm.__version__)
 
-    # get the model
+    sampling_params = {
+        "sampler": kwargs.get('sampler', 'nuts_numpyro'),
+        "chains": kwargs.get('chains', 4),
+        "cores": kwargs.get('cores', 4),
+        "draws": kwargs.get('draws', 1000),
+        "tune": kwargs.get('tune', 1000),
+        "idata_kwargs": kwargs.get('idata_kwargs', dict(log_likelihood=False))  # return log likelihood
+    }
     m = make_model(data, modelname)
     time.sleep(trace_id) # to avoid different jobs trying to make the same folder
 
@@ -78,8 +84,6 @@ def run_model(data, modelname, mypath, sampling_params, trace_id=0):
     inference_data = m.sample(**sampling_params)
 
     print('saving model itself')
-    #saveInferenceData(inference_data, os.path.join(mypath, f'{modelname}_model.nc'))
-    #m.saveInferenceData(os.path.join(mypath, f'{modelname}_model.nc'))
 
     # Save the InferenceData object
     inference_data.to_netcdf(os.path.join(mypath, f'{modelname}_model.nc'))
@@ -96,7 +100,6 @@ def run_model(data, modelname, mypath, sampling_params, trace_id=0):
 
     # save useful output
     print("saving summary stats")
-    # results = m.gen_stats().reset_index()  # point estimate for each parameter and subject
     results =  az.summary(inference_data).reset_index()  # point estimate for each parameter and subject
     results.to_csv(os.path.join(mypath, f'{modelname}_results_combined.csv'))
 
