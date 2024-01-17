@@ -15,6 +15,7 @@ import arviz as az
 import numpy as np
 import pandas as pd
 import hssm
+import matplotlib.pyplot as plt
 
 from ssms.basic_simulators.simulator import simulator
 hssm.set_floatX("float32")
@@ -39,17 +40,13 @@ subsample = elife_data[elife_data['subj_idx'].isin(elife_data.groupby('subj_idx'
 
 # %%
 # Define models
-# model_names = [
-#     "ddm_nohist_stimcat", 
-#     "ddm_prevresp_v", 
-#     "ddm_prevresp_z", 
-#     "ddm_stimcat_prevresp_zv", 
-#     "ddm_prevresp_zv"
-# ]
 model_names = [
     "ddm_nohist_stimcat", 
+    "ddm_prevresp_v", 
+    "ddm_prevresp_z",
+     "ddm_stimcat_prevresp_zv", 
+     "ddm_prevresp_zv"
 ]
-
 #ddm_models = {name: make_model(subsample, name) for name in model_names}
 
 # %% parameter estimation
@@ -58,13 +55,37 @@ sampling_params = {
     "sampler": "nuts_numpyro",
     "chains": 4,
     "cores": 4,
-    "draws": 100,
-    "tune": 0,
+    "draws": 2000,
+    "tune": 2000,
     "idata_kwargs": dict(log_likelihood=True)  # return log likelihood
 }
 
 # Sample from the posterior for each model
 model_run_results = {name: run_model(subsample, name, script_dir, **sampling_params) for name in model_names}
 # %%
-# az.summary(model_res1)
-# az.plot_trace(model_res1);
+# Base directory for model files and figures
+model_dir = "/Users/kiante/Documents/2023_choicehistory_HSSM/src/"
+figure_dir = "/Users/kiante/Documents/2023_choicehistory_HSSM/results/figures/"
+
+# Function to plot and save the model
+def plot_and_save_trace_plot(model_file_path, plot_file_path):
+    model_data = az.from_netcdf(model_file_path)
+    az.style.use("arviz-doc")
+    az.plot_trace(model_data)
+    plt.savefig(plot_file_path)
+
+# Loop through each model and apply the function
+for model_name in model_names:
+    # Construct the file paths
+    model_file_path = os.path.join(model_dir, model_name + "_model.nc")
+    plot_file_path = os.path.join(figure_dir, model_name + "_plot.pdf")
+
+    plot_and_save_trace_plot(model_file_path, plot_file_path)
+
+# %%
+
+#test = az.from_netcdf("/Users/kiante/Documents/2023_choicehistory_HSSM/src/ddm_nohist_stimcat_model.nc")
+#plt.savefig('/Users/kiante/Documents/2023_choicehistory_HSSM/results/figures/test_plot.pdf')  # Specify the path and filename here
+#TODO it thier no way to take an exisiting arviz.InferenceData objet and run the sample_posterior_predictive function on it?
+#hssm.HSSM.sample_posterior_predictive(idata=test,data=subsample)
+# %%

@@ -103,10 +103,10 @@ def run_model(data, modelname, mypath, trace_id=0, **kwargs):
     results =  az.summary(inference_data).reset_index()  # point estimate for each parameter and subject
     results.to_csv(os.path.join(mypath, f'{modelname}_results_combined.csv'))
 
-    print("saving traces")
-    # get the names for all nodes that are available here
-    group_traces = inference_data.posterior.to_dataframe()
-    group_traces.to_csv(os.path.join(mypath, f'{modelname}_group_traces.csv'))    
+    # print("saving traces")
+    # # get the names for all nodes that are available here
+    # group_traces = inference_data.posterior.to_dataframe()
+    # group_traces.to_csv(os.path.join(mypath, f'{modelname}_group_traces.csv'))    
     
     return m
 

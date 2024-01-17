@@ -107,7 +107,8 @@ def make_model(data, mname_full):
         hssm_model = hssm.HSSM(data, 
                                model=base_model,
                                loglik_kind="approx_differentiable", #note so we can use ddm, angle, and weibull 
-                               include=model_specs[mname])
+                               include=model_specs[mname],
+                               prior_settings="safe")
     else:
         raise ValueError('Model name not recognized!')
 
