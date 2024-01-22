@@ -31,9 +31,15 @@ def make_model(data, mname_full):
  
     print('making HSSM model')
 
-    mname_split = mname_full.split('_')
-    base_model = mname_split[0]
-    mname = "_".join(mname_split[1:])
+    if mname_full.startswith('full_ddm_'):
+        base_model = 'full_ddm'
+        mname = mname_full[len('full_ddm_'):]
+        spec_loglik_kind="blackbox" 
+    else:
+        mname_split = mname_full.split('_')
+        base_model = mname_split[0]
+        mname = "_".join(mname_split[1:])
+        spec_loglik_kind="approx_differentiable" 
 
     print(f'Base model: {base_model}')
     print(f'Model name: {mname}')
@@ -42,6 +48,12 @@ def make_model(data, mname_full):
     'nohist_stimcat': [
         {"name": "v", 
          "formula": "v ~ 0 + C(coherence) + (0+ C(coherence)|subj_idx)", #use for compare with continuous get a jumbo running
+         "link": "identity"},
+        {"name": "a", 
+         "formula": "a ~ 1 + (1|subj_idx)", 
+         "link": "identity"},
+        {"name": "t", 
+         "formula": "t ~ 1 + (1|subj_idx)", 
          "link": "identity"}
     ],
     # 'nohist_stimcat_dummycode': [
@@ -68,6 +80,12 @@ def make_model(data, mname_full):
          "link": "identity"},
         {"name": "z", 
          "formula": "z ~ 1 + (1|subj_idx)", 
+         "link": "identity"},
+        {"name": "a", 
+         "formula": "a ~ 1 + (1|subj_idx)", 
+         "link": "identity"},
+        {"name": "t", 
+         "formula": "t ~ 1 + (1|subj_idx)", 
          "link": "identity"}
     ],
     'prevresp_v': [
@@ -75,7 +93,13 @@ def make_model(data, mname_full):
          "formula": "v ~ 1 + stimulus + prevresp + (1 + stimulus + prevresp|subj_idx)", 
          "link": "identity"},
         {"name": "z", 
-         "formula": "z ~ 1 + (1|subj_idx)", 
+         "formula": "z ~ 1 + (1|subj_id,x)", 
+         "link": "identity"},
+        {"name": "a", 
+         "formula": "a ~ 1 + (1|subj_idx)", 
+         "link": "identity"},
+        {"name": "t", 
+         "formula": "t ~ 1 + (1|subj_idx)", 
          "link": "identity"}
     ],
     'prevresp_z': [
@@ -84,6 +108,12 @@ def make_model(data, mname_full):
          "link": "identity"},
         {"name": "z", 
          "formula": "z ~ 1 + prevresp + (1 + prevresp|subj_idx)", 
+         "link": "identity"},
+        {"name": "a", 
+         "formula": "a ~ 1 + (1|subj_idx)", 
+         "link": "identity"},
+        {"name": "t", 
+         "formula": "t ~ 1 + (1|subj_idx)", 
          "link": "identity"}
     ],
     'stimcat_prevresp_zv': [
@@ -92,6 +122,12 @@ def make_model(data, mname_full):
          "link": "identity"},
         {"name": "z", 
          "formula": "z ~ 1 + prevresp + (1 + prevresp|subj_idx)",
+         "link": "identity"},
+        {"name": "a", 
+         "formula": "a ~ 1 + (1|subj_idx)", 
+         "link": "identity"},
+        {"name": "t", 
+         "formula": "t ~ 1 + (1|subj_idx)", 
          "link": "identity"}
     ],
     'prevresp_zv': [
@@ -100,18 +136,23 @@ def make_model(data, mname_full):
          "link": "identity"},
         {"name": "z", 
          "formula": "z ~ 1 + prevresp + (1 + prevresp|subj_idx)", 
+         "link": "identity"},
+        {"name": "a", 
+         "formula": "a ~ 1 + (1|subj_idx)", 
+         "link": "identity"},
+        {"name": "t", 
+         "formula": "t ~ 1 + (1|subj_idx)", 
          "link": "identity"}
     ]
     }
     if mname in model_specs:
         hssm_model = hssm.HSSM(data, 
                                model=base_model,
-                               loglik_kind="approx_differentiable", #note so we can use ddm, angle, and weibull 
+                               loglik_kind=spec_loglik_kind, #note so we can use ddm, angle, and weibull 
                                include=model_specs[mname],
-                               prior_settings="safe")
+                               prior_settings="None")
+                            #    prior_settings="safe")
     else:
         raise ValueError('Model name not recognized!')
 
     return hssm_model
-
-
