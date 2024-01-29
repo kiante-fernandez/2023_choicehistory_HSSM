@@ -24,7 +24,7 @@ hssm.set_floatX("float32")
 
 from hssm_modelspec import make_model # specifically for hssm models
 #from utils_hssm import run_model, saveInferenceData
-from utils_hssm import run_model, dic, aggregate_model_comparisons
+from utils_hssm import run_model, dic, aggregate_model_comparisons, reattach
 #import utils_hssm
 #from utils_hssm import saveInferenceData
 
@@ -50,9 +50,9 @@ prep = pd.DataFrame(get_prep(elife_data))
 # %%
 # Define models
 model_names = [
-    # "ddm_nohist",
-    # "ddm_prevresp_v",
-    # "ddm_prevresp_z",
+    "ddm_nohist",
+    "ddm_prevresp_v",
+    "ddm_prevresp_z",
     "ddm_prevresp_zv"
 ]
 
@@ -66,10 +66,10 @@ ddm_models = {name: make_model(elife_data, name) for name in model_names}
 # Parameters for sampling
 sampling_params = {
     "sampler": "nuts_numpyro",
-    "chains": 4,
-    "cores": 12,
-    "draws": 3000,
-    "tune": 3000,
+    "chains": 3,
+    "cores": 3,
+    "draws": 1000,
+    "tune": 1000,
     "idata_kwargs": dict(log_likelihood=True)  # return log likelihood
 }
 
@@ -98,7 +98,7 @@ for model_name in model_names:
 # %%model comparisons
 #%matplotlib inline
 
-aggregate_model_comparisons("/Users/kiante/Documents/2023_choicehistory_HSSM/data")
+aggregate_model_comparisons("/Users/kiante/Documents/2023_choicehistory_HSSM/src")
 # load data
 comparison_data = pd.read_csv("/Users/kiante/Documents/2023_choicehistory_HSSM/src/aggregated_model_comparisons.csv")
 
@@ -137,10 +137,11 @@ for i, metric in enumerate(metrics):
 
 plt.tight_layout()
 plt.show()
+plt.savefig(os.path.join(figure_dir, "model_comparisons_v2.png"), dpi=300)
 
 # %% 
-res_v = pd.read_csv("/Users/kiante/Documents/2023_choicehistory_HSSM/data/ddm_prevresp_v_results_combined.csv")
-res_z = pd.read_csv("/Users/kiante/Documents/2023_choicehistory_HSSM/data/ddm_prevresp_z_results_combined.csv")
+res_v = pd.read_csv("/Users/kiante/Documents/2023_choicehistory_HSSM/src/ddm_prevresp_v_results_combined.csv")
+res_z = pd.read_csv("/Users/kiante/Documents/2023_choicehistory_HSSM/src/ddm_prevresp_z_results_combined.csv")
 
 pattern = r'v_prevresp\|subj_idx\[\d+\]'
 v_1_subj_idx_specific_rows = res_v[res_v['index'].str.contains(pattern, na=False, regex=True)]
@@ -193,6 +194,8 @@ plt.gca().tick_params(bottom=True, left=True)
 # Set the tick labels to be visible (they are sometimes turned off by default in seaborn's white style)
 plt.gca().tick_params(labelbottom=True, labelleft=True)
 plt.show()
+plt.savefig(os.path.join(figure_dir, "fig4A_vbias_v2.png"), dpi=300)
+
 sns.scatterplot(
     data=merged_df, 
     x="z_mean", 
@@ -217,6 +220,8 @@ plt.gca().tick_params(bottom=True, left=True)
 # Set the tick labels to be visible (they are sometimes turned off by default in seaborn's white style)
 plt.gca().tick_params(labelbottom=True, labelleft=True)
 plt.show()
+plt.savefig(os.path.join(figure_dir, "fig4A_z_v2.png"), dpi=300)
+
 # %% plot conditional bias function
 def conditional_history_plot(df, quantiles):
     import seaborn as sns
@@ -259,18 +264,20 @@ quantiles = [0, 0.1, 0.3, 0.5, 0.7, 0.9]
 fig = conditional_history_plot(elife_data, quantiles)
 plt.show()
 
-#%%
-# def reattach(filename, model):
-#     import arviz as az
-#     #load the inferenceData object
-#     temp_inferd = az.from_netcdf(filename)
-#     #reattch to the model
-#     return model
-
-# test_inferd = az.from_netcdf("/Users/kiante/Documents/2023_choicehistory_HSSM/data/ddm_nohist_stimcat_model.nc")
-# #reattch to the corresponding HSSM object
-# ddm_models["ddm_nohist_stimcat"].trace = test_inferd
-# #hssm.HSSM.sample_posterior_predictive(idata=test,data=subsample)
-# # %%
+#%% PPC sandbox
+# reattch to the corresponding HSSM object
+no_hist = reattach("/Users/kiante/Documents/2023_choicehistory_HSSM/data/ddm_nohist_model.nc", "ddm_nohist", elife_data)
+no_hist.traces
+no_hist.sample_posterior_predictive(data=elife_data, n_samples = 10, include_group_specific = True)
 # #note once model is rerun you can sample
-# ddm_models["ddm_nohist_stimcat"].sample_posterior_predictive(test_inferd)
+hssm.hssm.plotting.plot_posterior_predictive(model= no_hist)
+hssm.hssm.plotting.plot_quantile_probability(model= no_hist, cond="stimulus")
+
+plotting_df = hssm.hssm.plotting.posterior_predictive._get_plotting_df(idata=no_hist.traces, data=elife_data,extra_dims=["subj_idx","prevresp"])
+
+def get_prep(data):
+    data['prevresp_temp'] = data['prevresp'].map({-1: 0, 1: 1})
+    grouped_data = data.groupby(['observed','subj_idx'])['prevresp_temp'].apply(lambda x: x.value_counts(normalize=True))
+    return grouped_data
+
+get_prep(plotting_df)

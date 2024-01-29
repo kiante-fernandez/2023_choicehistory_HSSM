@@ -49,12 +49,12 @@ def make_model(data, mname_full):
         {"name": "v", 
          "formula": "v ~ 0 + C(coherence) + (0+ C(coherence)|subj_idx)", #use for compare with continuous get a jumbo running
          "link": "identity"},
-        {"name": "a", 
-         "formula": "a ~ 1 + (1|subj_idx)", 
-         "link": "identity"},
-        {"name": "t", 
-         "formula": "t ~ 1 + (1|subj_idx)", 
-         "link": "identity"}
+        # {"name": "a", 
+        #  "formula": "a ~ 1 + (1|subj_idx)", 
+        #  "link": "identity"},
+        # {"name": "t", 
+        #  "formula": "t ~ 1 + (1|subj_idx)", 
+        #  "link": "identity"}
     ],
     # 'nohist_stimcat_dummycode': [
     #     {"name": "v", 
@@ -81,25 +81,22 @@ def make_model(data, mname_full):
         {"name": "z", 
          "formula": "z ~ 1 + (1|subj_idx)", 
          "link": "identity"},
-        {"name": "a", 
-         "formula": "a ~ 1 + (1|subj_idx)", 
-         "link": "identity"},
-        {"name": "t", 
-         "formula": "t ~ 1 + (1|subj_idx)", 
-         "link": "identity"}
+        # {"name": "a", 
+        #  "formula": "a ~ 1 + (1|subj_idx)", 
+        #  "link": "identity"}
+        # {"name": "t", 
+        #  "formula": "t ~ 1 + (1|subj_idx)", 
+        #  "link": "identity"}
     ],
     'prevresp_v': [
         {"name": "v", 
          "formula": "v ~ 1 + stimulus + prevresp + (1 + stimulus + prevresp|subj_idx)", 
          "link": "identity"},
         {"name": "z", 
-         "formula": "z ~ 1 + (1|subj_id,x)", 
+         "formula": "z ~ 1 + (1|subj_idx)", 
          "link": "identity"},
         {"name": "a", 
          "formula": "a ~ 1 + (1|subj_idx)", 
-         "link": "identity"},
-        {"name": "t", 
-         "formula": "t ~ 1 + (1|subj_idx)", 
          "link": "identity"}
     ],
     'prevresp_z': [
@@ -111,25 +108,28 @@ def make_model(data, mname_full):
          "link": "identity"},
         {"name": "a", 
          "formula": "a ~ 1 + (1|subj_idx)", 
-         "link": "identity"},
-        {"name": "t", 
-         "formula": "t ~ 1 + (1|subj_idx)", 
          "link": "identity"}
+        # {"name": "a", 
+        #  "formula": "a ~ 1 + (1|subj_idx)", 
+        #  "link": "identity"},
+        # {"name": "t", 
+        #  "formula": "t ~ 1 + (1|subj_idx)", 
+        #  "link": "identity"}
     ],
-    'stimcat_prevresp_zv': [
-        {"name": "v", 
-         "formula": "v ~ C(coherence) + prevresp + (C(coherence) + prevresp |subj_idx)", 
-         "link": "identity"},
-        {"name": "z", 
-         "formula": "z ~ 1 + prevresp + (1 + prevresp|subj_idx)",
-         "link": "identity"},
-        {"name": "a", 
-         "formula": "a ~ 1 + (1|subj_idx)", 
-         "link": "identity"},
-        {"name": "t", 
-         "formula": "t ~ 1 + (1|subj_idx)", 
-         "link": "identity"}
-    ],
+    # 'stimcat_prevresp_zv': [
+    #     {"name": "v", 
+    #      "formula": "v ~ C(coherence) + prevresp + (C(coherence) + prevresp |subj_idx)", 
+    #      "link": "identity"},
+    #     {"name": "z", 
+    #      "formula": "z ~ 1 + prevresp + (1 + prevresp|subj_idx)",
+    #      "link": "identity"},
+    #     {"name": "a", 
+    #      "formula": "a ~ 1 + (1|subj_idx)", 
+    #      "link": "identity"}
+    #     # {"name": "t", 
+    #     #  "formula": "t ~ 1 + (1|subj_idx)", 
+    #     #  "link": "identity"}
+    # ],
     'prevresp_zv': [
         {"name": "v", 
          "formula": "v ~ stimulus + prevresp + (stimulus + prevresp |subj_idx)", 
@@ -139,10 +139,13 @@ def make_model(data, mname_full):
          "link": "identity"},
         {"name": "a", 
          "formula": "a ~ 1 + (1|subj_idx)", 
-         "link": "identity"},
-        {"name": "t", 
-         "formula": "t ~ 1 + (1|subj_idx)", 
          "link": "identity"}
+        # {"name": "a", 
+        #  "formula": "a ~ 1 + (1|subj_idx)", 
+        #  "link": "identity"},
+        # {"name": "t", 
+        #  "formula": "t ~ 1 + (1|subj_idx)", 
+        #  "link": "identity"}
     ]
     }
     if mname in model_specs:
@@ -150,8 +153,7 @@ def make_model(data, mname_full):
                                model=base_model,
                                loglik_kind=spec_loglik_kind, #note so we can use ddm, angle, and weibull 
                                include=model_specs[mname],
-                               prior_settings="None")
-                            #    prior_settings="safe")
+                               prior_settings="safe")
     else:
         raise ValueError('Model name not recognized!')
 

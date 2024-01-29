@@ -141,50 +141,15 @@ def aggregate_model_comparisons(directory):
 
     return 'File saved as aggregated_model_comparisons.csv'
 
-# TODO write something for simple plotting
-# def plot_model(m, savepath):
-
-#     # MAKE SOME PLOTS
-#     # 'Note: The posterior pair plot does not support regression models at this point! Aborting...'
-#     # hddm.plotting.plot_posterior_pair(m, samples=50,
-#     #                                   save=True, save_path=savepath)
-
-#     # quick overview of the parameters
-#     hddm.plotting.plot_caterpillar(hddm_model = m,
-#                                    save=True, path=savepath,
-#                                    drop_sd = True,
-#                                    keep_key=list(m.get_group_nodes().reset_index()['index']),
-#                                    columns=5)
-        
-#     # more classical posterior predictive on the RT distributions
-#     # the likelihood-based posterior predictives (_plot_func_posterior_pdf_node_nn) are not yet implemented for HDDMnn regression models, use simulated ones instead
-#     hddm.plotting.plot_posterior_predictive(model = m,
-#                                             save=True, path=savepath,
-#                                             # columns = 4, #groupby = ['subj_idx'],
-#                                             value_range = np.arange(-2, 2, 0.01),
-#                                             plot_func = hddm.plotting._plot_func_posterior_node_from_sim,
-#                                             figsize=(15,24),
-#                                             parameter_recovery_mode = False,
-#                                             **{'alpha': 0.01,
-#                                             'add_legend':False,
-#                                             'ylim': 3,
-#                                             'bin_size': 0.05,
-#                                             'add_posterior_mean_rts': True,
-#                                             'add_posterior_uncertainty_rts': False,
-#                                             #'samples': 30,
-#                                             'data_color':'darkblue',
-#                                             'posterior_mean_color':'firebrick',
-#                                             # 'legend_fontsize': 7,
-#                                             'subplots_adjust': {'top': 0.9, 'hspace': 1, 'wspace': 0.3}})
-    
-
-#     # across-subject parameter correlation plot
-#     results = results_long2wide_hddmnn(m.gen_stats().reset_index())  # point estimate for each parameter and subject
-#     g = sns.PairGrid(results, vars=list(set(results.columns) - set(['subj_idx'])))
-#     g.map_diag(sns.histplot)
-#     g.map_lower(corrfunc)
-#     g.map_upper(sns.kdeplot)
-#     g.savefig(os.path.join(savepath, 'pairgrid_corrplot.png'))
+def reattach(filename, model, data):
+    import arviz as az
+    from hssm_modelspec import make_model
+    #load the inferenceData object
+    inferd = az.from_netcdf(filename)
+    #reattch to the model
+    m = make_model(data,  model)
+    m._inference_obj = inferd
+    return m
 
 
 
