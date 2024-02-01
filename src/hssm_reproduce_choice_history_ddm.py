@@ -19,6 +19,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import re
 
+#%matplotlib inline
 from ssms.basic_simulators.simulator import simulator
 hssm.set_floatX("float32")
 
@@ -34,10 +35,16 @@ data_file_path = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM',
 elife_data = pd.read_csv(os.path.join(data_file_path, 'visual_motion_2afc_fd.csv'))
 
 elife_data['response'] = elife_data['response'].replace({0: -1, 1: 1})
+
+# # add some more history measures
+elife_data['stimrepeat'] = np.where(elife_data.stimulus == elife_data.prevstim, 1, 0)
+elife_data['repeat'] = np.where(elife_data.response == elife_data.prevresp, 1, 0)
+
 def get_prep(data):
-    data['prevresp_temp'] = data['prevresp'].map({-1: 0, 1: 1})
-    grouped_data = data.groupby('subj_idx')['prevresp_temp'].apply(lambda x: x.value_counts(normalize=True))
+     # grouped_data = data.groupby(['subj_idx'])['stimrepeat','repeat'].apply(lambda x: x.value_counts(normalize=True))
+    grouped_data = data.groupby(['subj_idx'])[['stimrepeat','repeat']].mean().reset_index()
     return grouped_data
+
 
 prep = pd.DataFrame(get_prep(elife_data))
 #prep = prep[prep.index.get_level_values(1) == 1]
@@ -65,11 +72,11 @@ ddm_models = {name: make_model(elife_data, name) for name in model_names}
 # %% parameter estimation
 # Parameters for sampling
 sampling_params = {
-    "sampler": "nuts_numpyro",
-    "chains": 3,
-    "cores": 3,
-    "draws": 1000,
-    "tune": 1000,
+    "sampler": "mcmc",
+    "chains": 4,
+    "cores": 4,
+    "draws": 5000,
+    "tune": 2000,
     "idata_kwargs": dict(log_likelihood=True)  # return log likelihood
 }
 
@@ -137,7 +144,7 @@ for i, metric in enumerate(metrics):
 
 plt.tight_layout()
 plt.show()
-plt.savefig(os.path.join(figure_dir, "model_comparisons_v2.png"), dpi=300)
+#plt.savefig(os.path.join(figure_dir, "model_comparisons_v2.png"), dpi=300)
 
 # %% 
 res_v = pd.read_csv("/Users/kiante/Documents/2023_choicehistory_HSSM/src/ddm_prevresp_v_results_combined.csv")
@@ -162,10 +169,9 @@ z_1_subj_idx_df_reset = z_1_subj_idx_df.reset_index(drop=True)
 prep_reset = prep.reset_index(drop=True)
 merged_df = pd.concat([v_1_subj_idx_df_reset,z_1_subj_idx_df_reset, prep_reset], axis=1)
 # Renaming columns for clarity
-merged_df.rename(columns={'prevresp_temp': 'prevresp'}, inplace=True)
+merged_df.rename(columns={'repeat': 'repetition'}, inplace=True)
 
 # %% plot it
-# %matplotlib inline
 
 # Set the seaborn style to white which has no grid by default and a clear background
 sns.set_style("white")
@@ -173,7 +179,7 @@ sns.set_style("white")
 sns.scatterplot(
     data=merged_df, 
     x="v_mean", 
-    y="prevresp", 
+    y="repetition", 
     edgecolor='gray', 
     facecolors='none', 
     s=50,  # size of the markers
@@ -194,12 +200,12 @@ plt.gca().tick_params(bottom=True, left=True)
 # Set the tick labels to be visible (they are sometimes turned off by default in seaborn's white style)
 plt.gca().tick_params(labelbottom=True, labelleft=True)
 plt.show()
-plt.savefig(os.path.join(figure_dir, "fig4A_vbias_v2.png"), dpi=300)
+# plt.savefig(os.path.join(figure_dir, "fig4A_vbias_v2.png"), dpi=300)
 
 sns.scatterplot(
     data=merged_df, 
     x="z_mean", 
-    y="prevresp", 
+    y="repetition", 
     edgecolor='gray', 
     facecolors='none', 
     s=50,  # size of the markers
@@ -220,31 +226,28 @@ plt.gca().tick_params(bottom=True, left=True)
 # Set the tick labels to be visible (they are sometimes turned off by default in seaborn's white style)
 plt.gca().tick_params(labelbottom=True, labelleft=True)
 plt.show()
-plt.savefig(os.path.join(figure_dir, "fig4A_z_v2.png"), dpi=300)
+# plt.savefig(os.path.join(figure_dir, "fig4A_z_v2.png"), dpi=300)
 
 # %% plot conditional bias function
+df = elife_data
 def conditional_history_plot(df, quantiles):
     import seaborn as sns
 
     # Binning response times
     df['rt_bin'] = pd.qcut(df['rt'], quantiles, labels=False)
     
-    # Compute the normalized value counts for prevresp_temp within each group
-    normalized_counts = df.groupby(['subj_idx','rt_bin'])['prevresp_temp'].value_counts(normalize=True)
-    normalized_counts = normalized_counts.rename('fraction').reset_index()
-    
-    # Filter rows where prevresp_temp is 1
-    filtered_counts = normalized_counts[normalized_counts['prevresp_temp'] == 1]
-    
+    rep_data = df.groupby(['rt_bin','subj_idx'])[['repeat']].mean().reset_index()
+    rep_data['repetition'] = rep_data.repeat
+
     # Calculate the mean of each group
-    mean_values = df.groupby(['subj_idx', 'rt_bin']).mean().reset_index()
+    # mean_values = df.groupby(['rt_bin', 'subj_idx']).mean().reset_index()
     
     # Merge the mean values with the filtered normalized counts
-    merged_data = pd.merge(mean_values, filtered_counts, on=['rt_bin', 'subj_idx'], how='left')
+    # merged_data = pd.merge(mean_values, rep_data, on=['rt_bin', 'subj_idx'], how='left')
     
     # Plotting
     fig, ax = plt.subplots()
-    sns.pointplot(x="rt_bin", y="fraction", data=merged_data, join=True, capsize=0.2)
+    sns.pointplot(x="rt_bin", y="repetition", data=rep_data, join=True, capsize=0.2)
     
     # Set plot details
     ax.set_title('Conditional bias')
@@ -281,3 +284,34 @@ def get_prep(data):
     return grouped_data
 
 get_prep(plotting_df)
+
+
+#####
+#TODO
+#quantile plots 
+#> just with single condition correct vs error...
+#> Alex would like to see a PR that looks that the qp 
+#> he would also like a test (?) that compares to the plots made in R
+
+# df_subj = elife_data.groupby(['subj_idx'])[['stimrepeat','repeat']].mean().reset_index()
+# df_subj['repetition'] = df_subj.repeat
+# df_subj_melt = df_subj.melt(id_vars=['subj_idx', 'repetition'])
+# df_subj_melt['x'] = np.where(df_subj_melt.variable == 'repeat', 1, 0) + df_subj_melt.repetition
+
+# plt.close('all')
+# fig, ax = plt.subplots(figsize=(6,8))
+
+# sns.lineplot(data=df_subj_melt, x='x', y='value', units='subj_idx', hue='repetition',
+#               estimator=None, legend=False, palette='PuOr', hue_norm=(0.4,0.6),#palette='ch:s=.25,rot=-.25',
+#               ax=ax, dashes=False)
+# ax.set(yticks=[0.4, 0.5, 0.6], xticks=[0.5, 1.5],
+#           ylabel='Repetition probability', xlabel='')
+# ax.set_xticklabels(['stimuli', 'choices'], rotation=-45)
+# sns.despine(trim=True)
+# plt.tight_layout()
+#TODO see code Anne sent.
+# https://github.com/anne-urai/2022_Urai_choicehistory_MEG/blob/main/behavior_plots.py#L28
+# df_subj = df.groupby(['subj_idx'])['stimrepeat', 'repeat', 'group'].mean().reset_index()
+# df_subj['repetition'] = df_subj.repeat
+# df_subj_melt = df_subj.melt(id_vars=['subj_idx', 'repetition', 'group'])
+# df_subj_melt['x'] = np.where(df_subj_melt.variable == 'repeat', 1, 0) + df_subj_melt.repetition

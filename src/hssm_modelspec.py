@@ -158,3 +158,7 @@ def make_model(data, mname_full):
         raise ValueError('Model name not recognized!')
 
     return hssm_model
+
+
+#TODO the MCMC sampler. Try that. for the larger model (subject specific effect per subject)
+#ndt. is a test case ()
