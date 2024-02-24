@@ -55,28 +55,10 @@ def make_model(data, mname_full):
         # {"name": "t", 
         #  "formula": "t ~ 1 + (1|subj_idx)", 
         #  "link": "identity"}
-    ],
-    # 'nohist_stimcat_dummycode': [
-    #     {"name": "v", 
-    #      "formula": "v ~ 0 + C(coherence, Treatment) + (0 + C(coherence, Treatment)|subj_idx)", 
-    #      "link": "identity"},
-    #     {"name": "z", 
-    #      "formula": "z ~ 1 + (1|subj_idx)", 
-    #      "link": "identity"}
-    # ],
-    # 'nohist_stimcat_reducedrankcode': [
-    #     {"name": "v", 
-    #      "formula": "v ~ 0 + C(coherence, Treatment(0)) + (0 + C(coherence, Treatment(0))|subj_idx)", 
-    #      "link": "identity"},
-    #     {"name": "z", 
-    #      "formula": "z ~ 1 + (1|subj_idx)", 
-    #      "link": "identity"}
-    # ],
-    # TODO add the model with continuous coherence and stimulus 
-    
+    ],    
     'nohist': [
         {"name": "v", 
-         "formula": "v ~ 1 + stimulus + (1 + stimulus|subj_idx)", 
+         "formula": "v ~ 1 + signed_contrast + (1 + signed_contrast|subj_idx)", 
          "link": "identity"},
         {"name": "z", 
          "formula": "z ~ 1 + (1|subj_idx)", 
@@ -90,18 +72,18 @@ def make_model(data, mname_full):
     ],
     'prevresp_v': [
         {"name": "v", 
-         "formula": "v ~ 1 + stimulus + prevresp + (1 + stimulus + prevresp|subj_idx)", 
+         "formula": "v ~ 1 + signed_contrast + prevresp + (1 + signed_contrast + prevresp|subj_idx)", 
          "link": "identity"},
         {"name": "z", 
          "formula": "z ~ 1 + (1|subj_idx)", 
-         "link": "identity"},
-        {"name": "a", 
-         "formula": "a ~ 1 + (1|subj_idx)", 
          "link": "identity"}
+        # {"name": "a", 
+        #  "formula": "a ~ 1 + (1|subj_idx)", 
+        #  "link": "identity"}
     ],
     'prevresp_z': [
         {"name": "v", 
-         "formula": "v ~ 1 + stimulus + (1 + stimulus |subj_idx)", 
+         "formula": "v ~ 1 + signed_contrast + (1 + signed_contrast |subj_idx)", 
          "link": "identity"},
         {"name": "z", 
          "formula": "z ~ 1 + prevresp + (1 + prevresp|subj_idx)", 
@@ -132,14 +114,14 @@ def make_model(data, mname_full):
     # ],
     'prevresp_zv': [
         {"name": "v", 
-         "formula": "v ~ stimulus + prevresp + (stimulus + prevresp |subj_idx)", 
+         "formula": "v ~ signed_contrast + prevresp + (signed_contrast + prevresp |subj_idx)", 
          "link": "identity"},
         {"name": "z", 
          "formula": "z ~ 1 + prevresp + (1 + prevresp|subj_idx)", 
-         "link": "identity"},
-        {"name": "a", 
-         "formula": "a ~ 1 + (1|subj_idx)", 
          "link": "identity"}
+        # {"name": "a", 
+        #  "formula": "a ~ 1 + (1|subj_idx)", 
+        #  "link": "identity"}
         # {"name": "a", 
         #  "formula": "a ~ 1 + (1|subj_idx)", 
         #  "link": "identity"},

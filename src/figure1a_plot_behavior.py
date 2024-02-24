@@ -14,6 +14,7 @@ import seaborn as sns
 import psychofit as pf
 import utils_plot as tools
 import utils_choice_history as more_tools
+import hssm.plotting
 
 ## INITIALIZE A FEW THINGS
 tools.seaborn_style()
@@ -24,12 +25,15 @@ script_dir = os.path.dirname(os.path.realpath(__file__))
 # Construct the path to the data file
 fig_file_path = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM','results', 'figures')
 data_file_path = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM', 'data', 'ibl_trainingchoiceworld_clean.csv')
+#data_file_path = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM', 'data', 'visual_motion_2afc_fd.csv')
 
 #load data
 data = pd.read_csv(data_file_path)
 # %% ================================= #
 # REGULAR PSYCHFUNCS
 # ================================= #
+
+#data['signed_contrast'] = data['coherence'] * data['stimulus']
 
 fig = sns.FacetGrid(data, hue="subj_idx")
 fig.map(tools.plot_psychometric, "signed_contrast", "response",
@@ -62,6 +66,3 @@ fig.set_axis_labels('Signed contrast (%)', 'RT (s)')
 ax.set_title('b. Chronometric function (n = %d)'%data.subj_idx.nunique())
 fig.savefig(os.path.join(fig_file_path, "chronfuncs_allmice.png"))
 fig.savefig(os.path.join(fig_file_path, "chronfuncs_allmice.pdf"))
-
-
-# %%

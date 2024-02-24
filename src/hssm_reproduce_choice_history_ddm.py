@@ -34,6 +34,8 @@ script_dir = os.path.dirname(os.path.realpath(__file__))
 data_file_path = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM', 'data')
 elife_data = pd.read_csv(os.path.join(data_file_path, 'visual_motion_2afc_fd.csv'))
 
+elife_data['signed_contrast'] = elife_data['coherence'] * elife_data['stimulus']
+
 elife_data['response'] = elife_data['response'].replace({0: -1, 1: 1})
 
 # # add some more history measures
@@ -72,7 +74,7 @@ ddm_models = {name: make_model(elife_data, name) for name in model_names}
 # %% parameter estimation
 # Parameters for sampling
 sampling_params = {
-    "sampler": "mcmc",
+    "sampler": "nuts_numpyro",
     "chains": 4,
     "cores": 4,
     "draws": 5000,
@@ -267,7 +269,8 @@ quantiles = [0, 0.1, 0.3, 0.5, 0.7, 0.9]
 fig = conditional_history_plot(elife_data, quantiles)
 plt.show()
 
-#%% PPC sandbox
+#%% Posterior predictives on psychometric/chronometric functions
+
 # reattch to the corresponding HSSM object
 no_hist = reattach("/Users/kiante/Documents/2023_choicehistory_HSSM/data/ddm_nohist_model.nc", "ddm_nohist", elife_data)
 no_hist.traces
@@ -285,9 +288,13 @@ def get_prep(data):
 
 get_prep(plotting_df)
 
+# %% ================================= #
+# QP plots 
+# ================================= #
+fig = hssm.plotting.quantile_probability(ddm_models['ddm_nohist'], cond="signed_contrast")
+fig.set_ylim(0, 3);
+# %%
 
-#####
-#TODO
 #quantile plots 
 #> just with single condition correct vs error...
 #> Alex would like to see a PR that looks that the qp 
