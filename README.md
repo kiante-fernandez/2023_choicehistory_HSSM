@@ -3,7 +3,7 @@
 This repository hosts the code and supplementary materials for the paper "History-Dependent Decision-Making across Species." Our research delves into the decision-making behaviors of humans and mice, revealing a shared cognitive strategy of history-dependent evidence accumulation.
 
 > **History-Dependent Decision-Making across Species**  
-> Kianté Fernnadez<sup>2</sup>, Alexander Fengler<sup>2</sup>, and Anne Urai<sup>3</sup>  
+> Kianté Fernandez<sup>2</sup>, Alexander Fengler<sup>2</sup>, and Anne Urai<sup>3</sup>  
 > <sup>1</sup>Department of Psychology, University of California, Los Angeles, CA, USA  
 > <sup>2</sup>Department of Cognitive, Linguistic and Psychological Sciences, Brown University, USA  
 > <sup>3</sup>Department of Psychology, Leiden University, The Netherlands 
