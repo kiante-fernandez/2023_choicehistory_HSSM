@@ -42,6 +42,9 @@ elife_data['response'] = elife_data['response'].replace({0: -1, 1: 1})
 elife_data['stimrepeat'] = np.where(elife_data.stimulus == elife_data.prevstim, 1, 0)
 elife_data['repeat'] = np.where(elife_data.response == elife_data.prevresp, 1, 0)
 
+excluded_participants = [11, 19, 20, 22, 26, 27, 28] #whose subject level fits did not converge
+elife_data = elife_data[~elife_data['participant_id'].isin(excluded_participants)]
+
 def get_prep(data):
      # grouped_data = data.groupby(['subj_idx'])['stimrepeat','repeat'].apply(lambda x: x.value_counts(normalize=True))
     grouped_data = data.groupby(['subj_idx'])[['stimrepeat','repeat']].mean().reset_index()
@@ -52,9 +55,9 @@ prep = pd.DataFrame(get_prep(elife_data))
 #prep = prep[prep.index.get_level_values(1) == 1]
 
 # Define the number of subjects you want to sample
-# num_subjects = 5
+num_subjects = 5
 # # Group the data by subject, sample the desired number of subjects, and get all rows for these subjects
-# subsample = elife_data[elife_data['subj_idx'].isin(elife_data.groupby('subj_idx').size().sample(num_subjects).index)]
+subsample = elife_data[elife_data['subj_idx'].isin(elife_data.groupby('subj_idx').size().sample(num_subjects).index)]
 
 # %%
 # Define models
@@ -69,16 +72,16 @@ model_names = [
 #     "full_ddm_nohist"
 # ]
 
-ddm_models = {name: make_model(elife_data, name) for name in model_names}
+#ddm_models = {name: make_model(elife_data, name) for name in model_names}
 
 # %% parameter estimation
 # Parameters for sampling
 sampling_params = {
     "sampler": "nuts_numpyro",
-    "chains": 4,
-    "cores": 4,
-    "draws": 5000,
-    "tune": 2000,
+    "chains": 10,
+    "cores": 10,
+    "draws": 2000,
+    "tune": 1500,
     "idata_kwargs": dict(log_likelihood=True)  # return log likelihood
 }
 

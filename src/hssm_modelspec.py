@@ -87,9 +87,6 @@ def make_model(data, mname_full):
          "link": "identity"},
         {"name": "z", 
          "formula": "z ~ 1 + prevresp + (1 + prevresp|subj_idx)", 
-         "link": "identity"},
-        {"name": "a", 
-         "formula": "a ~ 1 + (1|subj_idx)", 
          "link": "identity"}
         # {"name": "a", 
         #  "formula": "a ~ 1 + (1|subj_idx)", 
