@@ -19,6 +19,7 @@ from hssm.likelihoods import logp_ddm_sdv, DDM
 from hssm.utils import download_hf
 from hssm import set_floatX
 from hssm import load_data
+from utils_hssm import  aggregate_model_comparisons
 
 #%matplotlib inline
 set_floatX("float32")
@@ -58,6 +59,7 @@ participants = elife_data['participant_id'].unique()
 dataset = elife_data 
 excluded_participants = [11, 19, 20, 22, 26, 27, 28]
 dataset = dataset[~dataset['participant_id'].isin(excluded_participants)]
+# dataset = mouse_data 
 
 n_subjects = len(dataset['participant_id'].unique())
 participant_id, unique_participants = pd.factorize(dataset['subj_idx'])
@@ -100,8 +102,8 @@ with pm.Model() as no_hist_pymc:
     no_hist_pymc_trace = pm.sample(init="adapt_diag",
                                cores=4,
                                chains=4,
-                               draws=3000,
-                               tune=3000,
+                               draws=1000,
+                               tune=1000,
                                discard_tuned_samples = True,
                                idata_kwargs=dict(log_likelihood=True))
     # no_hist_pymc_trace = pm.sample(nuts_sampler="numpyro", 
@@ -158,8 +160,8 @@ with pm.Model() as prevresp_v_pymc:
     prevresp_v_pymc_trace = pm.sample(init="adapt_diag",
                                cores=4,
                                chains=4,
-                               draws=3000,
-                               tune=3000,
+                               draws=1000,
+                               tune=1000,
                                idata_kwargs=dict(log_likelihood=True))
     
 results =  az.summary(prevresp_v_pymc_trace).reset_index()  # point estimate for each parameter and subject
@@ -209,8 +211,8 @@ with pm.Model() as prevresp_z_pymc:
     prevresp_z_pymc_trace = pm.sample(init="adapt_diag",
                                cores=4,
                                chains=4,
-                               draws=3000,
-                               tune=3000,
+                               draws=1000,
+                               tune=1000,
                                idata_kwargs=dict(log_likelihood=True))
     
 results =  az.summary(prevresp_z_pymc_trace).reset_index()  # point estimate for each parameter and subject
@@ -264,8 +266,8 @@ with pm.Model() as prevresp_zv_pymc:
     prevresp_zv_pymc_trace = pm.sample(init="adapt_diag",
                                cores=4,
                                chains=4,
-                               draws=3000,
-                               tune=3000,
+                               draws=1000,
+                               tune=1000,
                                idata_kwargs=dict(log_likelihood=True))
     
 results =  az.summary(prevresp_zv_pymc_trace).reset_index()  # point estimate for each parameter and subject
@@ -289,6 +291,11 @@ df2.to_csv('model_comparison.csv', index=False)
 dataset =  elife_data
 excluded_participants = [11, 19, 20, 22, 26, 27, 28]
 dataset = dataset[~dataset['participant_id'].isin(excluded_participants)]
+
+# selected_participants = participants[:num_subjects]
+selected_participants = participants[11, 19, 20]
+subsample = elife_data[elife_data['participant_id'].isin(selected_participants)]
+subsample = subsample[['rt','response','signed_contrast','prevresp','participant_id','subj_idx']]
 
 n_subjects = len(dataset['participant_id'].unique())
 signed_contrast = dataset['signed_contrast'].values
@@ -328,13 +335,13 @@ with pm.Model() as no_hist_pymc:
     ddm = DDM("ddm", v=v, a=a, z=z, t=t, observed=dataset[['rt','response']].values)
 
     # Sampling
-    # no_hist_pymc_trace = pm.sample(init="adapt_diag",
-    #                            cores=4,
-    #                            chains=4,
-    #                            draws=1000,
-    #                            tune=1000,
-    #                            discard_tuned_samples = True,
-    #                            idata_kwargs=dict(log_likelihood=True))
+    no_hist_pymc_trace = pm.sample(init="adapt_diag",
+                               cores=4,
+                               chains=4,
+                               draws=1000,
+                               tune=1000,
+                               discard_tuned_samples = True,
+                               idata_kwargs=dict(log_likelihood=True))
     
 # %% singel suibject tests
 # from matplotlib import pyplot as plt
@@ -364,14 +371,69 @@ with pm.Model() as no_hist_stim_pymc:
     ddm = DDM("ddm", v=v, a=a, z=z, t=t, observed=dataset[['rt','response']].values)
 
     # Sampling
-    # no_hist_stim_pymc_trace = pm.sample(init="adapt_diag",
-    #                            cores=4,
-    #                            chains=4,
-    #                            draws=1000,
-    #                            tune=1000,
-    #                            idata_kwargs=dict(log_likelihood=False))
+    no_hist_stim_pymc_trace = pm.sample(init="adapt_diag",
+                               cores=4,
+                               chains=4,
+                               draws=1000,
+                               tune=1000,
+                               idata_kwargs=dict(log_likelihood=False))
     
 # %%
-# az.plot_trace(no_hist_stim_pymc_trace)
-# plt.tight_layout()
+from matplotlib import pyplot as plt
+
+az.plot_trace(no_hist_stim_pymc_trace)
+plt.tight_layout()
+az.plot_trace(no_hist_pymc_trace)
+plt.tight_layout()
+az.plot_trace(prevresp_v_pymc_trace)
+plt.tight_layout()
+az.plot_trace(prevresp_z_pymc_trace)
+plt.tight_layout()
+az.plot_trace(prevresp_zv_pymc_trace)
+plt.tight_layout()
 # results =  az.summary(no_hist_stim_pymc_trace).reset_index()  # point estimate for each parameter and subject
+
+# %% quick model compare.
+import seaborn as sns
+%matplotlib inline
+
+# load data
+comparison_data = pd.read_csv("/Users/kiante/Documents/2023_choicehistory_HSSM/src/model_comparison.csv")
+comparison_data = comparison_data.melt(id_vars='Model', value_vars=['WAIC', 'LOO'], var_name='Metric', value_name='Value')
+
+# Filter the data for the reference model 'ddm_nohist_stimcat'
+reference_data = comparison_data[comparison_data['Model'] == 'ddm_nohist']
+# Merge the reference data with the full dataset to calculate the differences
+merged_data = comparison_data.merge(reference_data, on='Metric', suffixes=('', '_ref'))
+# Calculate the difference in value for each metric compared to the reference model
+merged_data['Value_diff'] =  merged_data['Value'] - merged_data['Value_ref']
+# Filter out the reference model from the comparison
+comparison_data = merged_data[merged_data['Model'] != merged_data['Model_ref']]
+
+# plot
+def annotate_bars(ax, precision="{:.2f}"):
+    for p in ax.patches:
+        _x = p.get_x() + p.get_width() / 2
+        _y = p.get_y() + p.get_height()
+        value = precision.format(p.get_height())
+        ax.text(_x, _y, value, ha="center") 
+
+metrics = comparison_data['Metric'].unique()       
+fig, axes = plt.subplots(len(metrics), 1, figsize=(10, 6 * len(metrics)))
+
+for i, metric in enumerate(metrics):
+    ax = axes[i]
+    #sorted_data = comparison_data[comparison_data['Metric'] == metric].sort_values('Value_diff')
+    sns.barplot(x='Model', y='Value_diff', data=comparison_data[comparison_data['Metric'] == metric], ax=ax, palette="deep")
+    ax.set_title(f'Difference in {metric} Compared to ddm_nohist', fontsize=14, fontweight='bold')
+    ax.set_ylabel('Difference in Value',fontsize=12, fontweight='bold')
+    ax.set_xlabel('Model', fontsize=12, fontweight='bold')
+    ax.tick_params(axis='x', rotation=45)
+    sns.despine(ax=ax) 
+    annotate_bars(ax, "{:.2f}")
+    plt.gca().tick_params(bottom=True, left=True)
+    plt.gca().tick_params(labelbottom=True, labelleft=True)
+
+plt.tight_layout()
+plt.show()
+# %%
