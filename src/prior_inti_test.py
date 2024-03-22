@@ -19,7 +19,7 @@ from hssm.likelihoods import logp_ddm_sdv, DDM
 from hssm.utils import download_hf
 from hssm import set_floatX
 from hssm import load_data
-from utils_hssm import  aggregate_model_comparisons
+from utils_hssm import  dic, aggregate_model_comparisons
 
 #%matplotlib inline
 set_floatX("float32")
@@ -28,10 +28,10 @@ set_floatX("float32")
 script_dir = os.path.dirname(os.path.realpath(__file__))
 
 data_file_path = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM', 'data')
-mouse_data = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM', 'data', 'ibl_trainingchoiceworld_clean.csv')
-mouse_data = pd.read_csv(mouse_data)
-mouse_data['response'] = mouse_data['response'].replace({0: -1, 1: 1})
-mouse_data['rt'] = mouse_data['rt'].round(5)
+# mouse_data = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM', 'data', 'ibl_trainingchoiceworld_clean.csv')
+# mouse_data = pd.read_csv(mouse_data)
+# mouse_data['response'] = mouse_data['response'].replace({0: -1, 1: 1})
+# mouse_data['rt'] = mouse_data['rt'].round(5)
 
 elife_data = pd.read_csv(os.path.join(data_file_path, 'visual_motion_2afc_fd.csv'))
 
@@ -57,7 +57,7 @@ participants = elife_data['participant_id'].unique()
 
 # %%
 dataset = elife_data 
-excluded_participants = [11, 19, 20, 22, 26, 27, 28]
+excluded_participants = [11, 19, 20, 22, 26, 27, 28] #we want diff combos
 dataset = dataset[~dataset['participant_id'].isin(excluded_participants)]
 # dataset = mouse_data 
 
@@ -279,69 +279,72 @@ models = [no_hist_pymc_trace, prevresp_v_pymc_trace, prevresp_z_pymc_trace, prev
 results = []
 
 for i, model_trace in enumerate(models):
+    dics = dic(model_trace)['ddm'].values.item()
     waic = az.waic(model_trace).elpd_waic
     loo = az.loo(model_trace).elpd_loo
-    results.append({'Model': f'Model{i+1}', 'WAIC': waic, 'LOO': loo})
+    results.append({'Model': f'Model{i+1}','DIC':dics, 'WAIC': waic, 'LOO': loo})
 
 df2 = pd.DataFrame(results)
 df2.to_csv('model_comparison.csv', index=False)
 
+df2.to_csv('model_comparison_run.csv', index=False)
 
 #%%
-dataset =  elife_data
-excluded_participants = [11, 19, 20, 22, 26, 27, 28]
-dataset = dataset[~dataset['participant_id'].isin(excluded_participants)]
+#Do not need to run! RN 
+# dataset =  elife_data
+# excluded_participants = [11, 19, 20, 22, 26, 27, 28]
+# dataset = dataset[~dataset['participant_id'].isin(excluded_participants)]
 
-# selected_participants = participants[:num_subjects]
-selected_participants = participants[11, 19, 20]
-subsample = elife_data[elife_data['participant_id'].isin(selected_participants)]
-subsample = subsample[['rt','response','signed_contrast','prevresp','participant_id','subj_idx']]
+# # selected_participants = participants[:num_subjects]
+# selected_participants = participants[11, 19, 20]
+# subsample = elife_data[elife_data['participant_id'].isin(selected_participants)]
+# subsample = subsample[['rt','response','signed_contrast','prevresp','participant_id','subj_idx']]
 
-n_subjects = len(dataset['participant_id'].unique())
-signed_contrast = dataset['signed_contrast'].values
-participant_id, unique_participants = pd.factorize(dataset['subj_idx'])
+# n_subjects = len(dataset['participant_id'].unique())
+# signed_contrast = dataset['signed_contrast'].values
+# participant_id, unique_participants = pd.factorize(dataset['subj_idx'])
 
-with pm.Model() as no_hist_pymc:
-    # sigma_intercept_v = pm.Weibull("v_1|participant_id_sigma", alpha = 1.5, beta = 0.3)
-    # sigma_signed_contrast_v = pm.Weibull("v_signed_contrast|participant_id_sigma", alpha = 1.5, beta = 0.3)
+# with pm.Model() as no_hist_pymc:
+#     # sigma_intercept_v = pm.Weibull("v_1|participant_id_sigma", alpha = 1.5, beta = 0.3)
+#     # sigma_signed_contrast_v = pm.Weibull("v_signed_contrast|participant_id_sigma", alpha = 1.5, beta = 0.3)
     
-    # sigma_intercept_z = pm.Weibull("z_1|participant_id_sigma", alpha = 1.5, beta = 0.3)
-    # sigma_intercept_a = pm.Weibull("a_1|participant_id_sigma", alpha = 1.5, beta = 0.3)
-    # sigma_intercept_t = pm.Weibull("t_1|participant_id_sigma", alpha = 1.5, beta = 0.3)
+#     # sigma_intercept_z = pm.Weibull("z_1|participant_id_sigma", alpha = 1.5, beta = 0.3)
+#     # sigma_intercept_a = pm.Weibull("a_1|participant_id_sigma", alpha = 1.5, beta = 0.3)
+#     # sigma_intercept_t = pm.Weibull("t_1|participant_id_sigma", alpha = 1.5, beta = 0.3)
 
-    # Hierarchical
-    v_signed_contrast_group = pm.Normal("v_signed_contrast", mu=0, sigma=2, shape = n_subjects)
-    v_Intercept_group = pm.Normal("v_Intercept",mu=0, sigma=1,shape = n_subjects)
-    gamma_dist_z = pm.Gamma.dist(mu= 10, sigma= 10,shape = n_subjects)
-    z_Intercept_group =  pm.Truncated("z_Intercept",gamma_dist_z, lower= 0, upper= 1)
-    a_Intercept_group = pm.Gamma("a_Intercept",mu=1.5, sigma=0.5, shape = n_subjects)
-    # t_Intercept_group = pm.Gamma("t_Intercept",mu=0.4, sigma=2)
-    t_Intercept_group = pm.Weibull("t_Intercept",alpha=1, beta=0.2, shape = n_subjects)
+#     # Hierarchical
+#     v_signed_contrast_group = pm.Normal("v_signed_contrast", mu=0, sigma=2, shape = n_subjects)
+#     v_Intercept_group = pm.Normal("v_Intercept",mu=0, sigma=1,shape = n_subjects)
+#     gamma_dist_z = pm.Gamma.dist(mu= 10, sigma= 10,shape = n_subjects)
+#     z_Intercept_group =  pm.Truncated("z_Intercept",gamma_dist_z, lower= 0, upper= 1)
+#     a_Intercept_group = pm.Gamma("a_Intercept",mu=1.5, sigma=0.5, shape = n_subjects)
+#     # t_Intercept_group = pm.Gamma("t_Intercept",mu=0.4, sigma=2)
+#     t_Intercept_group = pm.Weibull("t_Intercept",alpha=1, beta=0.2, shape = n_subjects)
 
 
-    # v_intercept_prior = pm.Normal("v_1|participant_id_offset", mu=0, sigma=1, shape=n_subjects)
-    # v_signed_contrast_prior = pm.Normal("v_signed_contrast|participant_id_offset", mu=0, sigma=1, shape=n_subjects)
-    # z_intercept_prior = pm.Normal("z_1|participant_id_offset", mu=0, sigma=1, shape=n_subjects)
-    # a_intercept_prior = pm.Normal("a_1|participant_id_offset", mu=0, sigma=1, shape=n_subjects)
-    # t_intercept_prior = pm.Normal("t_1|participant_id_offset", mu=0, sigma=1, shape=n_subjects)
+#     # v_intercept_prior = pm.Normal("v_1|participant_id_offset", mu=0, sigma=1, shape=n_subjects)
+#     # v_signed_contrast_prior = pm.Normal("v_signed_contrast|participant_id_offset", mu=0, sigma=1, shape=n_subjects)
+#     # z_intercept_prior = pm.Normal("z_1|participant_id_offset", mu=0, sigma=1, shape=n_subjects)
+#     # a_intercept_prior = pm.Normal("a_1|participant_id_offset", mu=0, sigma=1, shape=n_subjects)
+#     # t_intercept_prior = pm.Normal("t_1|participant_id_offset", mu=0, sigma=1, shape=n_subjects)
 
-    # Linear combinations
-    v = v_Intercept_group[participant_id] + v_signed_contrast_group[participant_id] * signed_contrast
-    z = z_Intercept_group[participant_id]
-    a = a_Intercept_group[participant_id]
-    t = t_Intercept_group[participant_id] 
+#     # Linear combinations
+#     v = v_Intercept_group[participant_id] + v_signed_contrast_group[participant_id] * signed_contrast
+#     z = z_Intercept_group[participant_id]
+#     a = a_Intercept_group[participant_id]
+#     t = t_Intercept_group[participant_id] 
 
-    # Drift Diffusion Model as the likelihood function
-    ddm = DDM("ddm", v=v, a=a, z=z, t=t, observed=dataset[['rt','response']].values)
+#     # Drift Diffusion Model as the likelihood function
+#     ddm = DDM("ddm", v=v, a=a, z=z, t=t, observed=dataset[['rt','response']].values)
 
-    # Sampling
-    no_hist_pymc_trace = pm.sample(init="adapt_diag",
-                               cores=4,
-                               chains=4,
-                               draws=1000,
-                               tune=1000,
-                               discard_tuned_samples = True,
-                               idata_kwargs=dict(log_likelihood=True))
+#     # Sampling
+#     no_hist_pymc_trace = pm.sample(init="adapt_diag",
+#                                cores=4,
+#                                chains=4,
+#                                draws=1000,
+#                                tune=1000,
+#                                discard_tuned_samples = True,
+#                                idata_kwargs=dict(log_likelihood=True))
     
 # %% singel suibject tests
 # from matplotlib import pyplot as plt
@@ -350,39 +353,40 @@ with pm.Model() as no_hist_pymc:
 # results =  az.summary(no_hist_pymc_trace).reset_index()  # point estimate for each parameter and subject
 
 # %%
-n_coherence = len(dataset['signed_contrast'].unique())
-signed_contrast_id, unique_contrast = pd.factorize(dataset['signed_contrast'])
+# n_coherence = len(dataset['signed_contrast'].unique())
+# signed_contrast_id, unique_contrast = pd.factorize(dataset['signed_contrast'])
 
-with pm.Model() as no_hist_stim_pymc:
+# with pm.Model() as no_hist_stim_pymc:
 
-    v_Intercept_group = pm.Normal("v_Intercept",mu=0, sigma=1,shape = n_coherence)
-    gamma_dist_z = pm.Gamma.dist(mu= 10, sigma= 10)
-    z_Intercept_group =  pm.Truncated("z_Intercept",gamma_dist_z, lower= 0, upper= 1)
-    a_Intercept_group = pm.Gamma("a_Intercept",mu=1.5, sigma=0.5)
-    t_Intercept_group = pm.Weibull("t_Intercept",alpha=1, beta=0.2)
+#     v_Intercept_group = pm.Normal("v_Intercept",mu=0, sigma=1,shape = n_coherence)
+#     gamma_dist_z = pm.Gamma.dist(mu= 10, sigma= 10)
+#     z_Intercept_group =  pm.Truncated("z_Intercept",gamma_dist_z, lower= 0, upper= 1)
+#     a_Intercept_group = pm.Gamma("a_Intercept",mu=1.5, sigma=0.5)
+#     t_Intercept_group = pm.Weibull("t_Intercept",alpha=1, beta=0.2)
 
-    # Linear combinations
-    v = v_Intercept_group[signed_contrast_id]
-    z = z_Intercept_group
-    a = a_Intercept_group
-    t = t_Intercept_group
+#     # Linear combinations
+#     v = v_Intercept_group[signed_contrast_id]
+#     z = z_Intercept_group
+#     a = a_Intercept_group
+#     t = t_Intercept_group
 
-    # Drift Diffusion Model as the likelihood function
-    ddm = DDM("ddm", v=v, a=a, z=z, t=t, observed=dataset[['rt','response']].values)
+#     # Drift Diffusion Model as the likelihood function
+#     ddm = DDM("ddm", v=v, a=a, z=z, t=t, observed=dataset[['rt','response']].values)
 
-    # Sampling
-    no_hist_stim_pymc_trace = pm.sample(init="adapt_diag",
-                               cores=4,
-                               chains=4,
-                               draws=1000,
-                               tune=1000,
-                               idata_kwargs=dict(log_likelihood=False))
+#     # Sampling
+#     no_hist_stim_pymc_trace = pm.sample(init="adapt_diag",
+#                                cores=4,
+#                                chains=4,
+#                                draws=1000,
+#                                tune=1000,
+#                                idata_kwargs=dict(log_likelihood=False))
     
 # %%
 from matplotlib import pyplot as plt
 
 az.plot_trace(no_hist_stim_pymc_trace)
 plt.tight_layout()
+plt.savefig("file_name.png", dpi=300)
 az.plot_trace(no_hist_pymc_trace)
 plt.tight_layout()
 az.plot_trace(prevresp_v_pymc_trace)
@@ -397,9 +401,20 @@ plt.tight_layout()
 import seaborn as sns
 %matplotlib inline
 
+model_names = [
+    "ddm_nohist",
+    "ddm_prevresp_v",
+    "ddm_prevresp_z",
+    "ddm_prevresp_zv"
+]
+
 # load data
 comparison_data = pd.read_csv("/Users/kiante/Documents/2023_choicehistory_HSSM/src/model_comparison.csv")
-comparison_data = comparison_data.melt(id_vars='Model', value_vars=['WAIC', 'LOO'], var_name='Metric', value_name='Value')
+comparison_data = comparison_data.melt(id_vars='Model', value_vars=['DIC','WAIC', 'LOO'], var_name='Metric', value_name='Value')
+# Create a dictionary mapping the old model names to the new ones
+model_name_mapping = {f'Model{i+1}': name for i, name in enumerate(model_names)}
+# Replace the model names
+comparison_data['Model'] = comparison_data['Model'].replace(model_name_mapping)
 
 # Filter the data for the reference model 'ddm_nohist_stimcat'
 reference_data = comparison_data[comparison_data['Model'] == 'ddm_nohist']
