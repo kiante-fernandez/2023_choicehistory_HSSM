@@ -224,6 +224,8 @@ if __name__ == "__main__":
     for r in range(1, len(exclude_candidates)+1):
         exclude_combinations.extend(itertools.combinations(exclude_candidates, r))
     
+    exclude_combinations.reverse()
+    
     for exclude in exclude_combinations:
         included_participants = set(all_participants) - set(exclude)
         dataset = elife_data[elife_data['participant_id'].isin(included_participants)]
@@ -236,6 +238,6 @@ if __name__ == "__main__":
             subset_id = '_excluded_' + '_'.join(map(str, exclude))
         else:
             subset_id = '_all'
-
+        print(exclude)
         # Call to run all models with unique filenames for each subset and model
         run_all_models(dataset, n_subjects, participant_id, signed_contrast, prevresp, subset_id, timeout_hours=timeout_hours)
