@@ -152,4 +152,5 @@ def reattach(filename, model, data):
     return m
 
 
-
+def filter_group_level_params(param_name, suffix):
+    return suffix not in param_name
