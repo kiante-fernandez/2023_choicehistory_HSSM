@@ -132,7 +132,9 @@ def make_model(data, mname_full):
                                model=base_model,
                                loglik_kind=spec_loglik_kind, #note so we can use ddm, angle, and weibull 
                                include=model_specs[mname],
-                               prior_settings="safe")
+                               prior_settings= "safe",
+                               hierarchical=True,
+                               link_settings = "log_logit")
     else:
         raise ValueError('Model name not recognized!')
 

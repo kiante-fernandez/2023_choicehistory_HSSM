@@ -21,7 +21,7 @@ import re
 
 #%matplotlib inline
 from ssms.basic_simulators.simulator import simulator
-hssm.set_floatX("float32")
+#hssm.set_floatX("float32")
 
 from hssm_modelspec import make_model # specifically for hssm models
 #from utils_hssm import run_model, saveInferenceData
@@ -42,7 +42,9 @@ elife_data['response'] = elife_data['response'].replace({0: -1, 1: 1})
 elife_data['stimrepeat'] = np.where(elife_data.stimulus == elife_data.prevstim, 1, 0)
 elife_data['repeat'] = np.where(elife_data.response == elife_data.prevresp, 1, 0)
 
+elife_data['participant_id'] = elife_data['subj_idx']
 excluded_participants = [11, 19, 20, 22, 26, 27, 28] #whose subject level fits did not converge
+
 elife_data = elife_data[~elife_data['participant_id'].isin(excluded_participants)]
 
 def get_prep(data):
@@ -78,10 +80,10 @@ model_names = [
 # Parameters for sampling
 sampling_params = {
     "sampler": "nuts_numpyro",
-    "chains": 10,
-    "cores": 10,
-    "draws": 2000,
-    "tune": 1500,
+    "chains": 6,
+    "cores": 6,
+    "draws": 3000,
+    "tune": 3000,
     "idata_kwargs": dict(log_likelihood=True)  # return log likelihood
 }
 

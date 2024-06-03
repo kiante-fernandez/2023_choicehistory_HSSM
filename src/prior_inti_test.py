@@ -6,11 +6,10 @@ import pandas as pd
 import pymc as pm
 import pytensor
 from ssms.basic_simulators.simulator import simulator
+import glob
 
 from hssm.distribution_utils import (
     make_distribution,  # A general function for making Distribution classes
-    make_distribution_from_onnx,  # Makes Distribution classes from onnx files
-    make_distribution_from_blackbox,  # Makes Distribution classes from callables
 )
 
 # pm.Distributions that represents the top-level distribution for
@@ -64,6 +63,7 @@ dataset = dataset[~dataset['participant_id'].isin(excluded_participants)]
 n_subjects = len(dataset['participant_id'].unique())
 participant_id, unique_participants = pd.factorize(dataset['subj_idx'])
 signed_contrast = dataset['signed_contrast'].values
+# %%
 
 with pm.Model() as no_hist_pymc:
     sigma_intercept_v = pm.Weibull("v_1|participant_id_sigma", alpha = 1.5, beta = 0.3)
@@ -113,9 +113,96 @@ with pm.Model() as no_hist_pymc:
     #                            tune=8000,
     #                            idata_kwargs=dict(log_likelihood=False))
 
+
 print("saving summary stats")
+
 results =  az.summary(no_hist_pymc_trace).reset_index()  # point estimate for each parameter and subject
-results.to_csv('m1_test_results_combined.csv')
+results.to_csv('m1_test_results_v.csv')
+# %% HSSM version
+import hssm 
+
+param_v = hssm.Param(
+    "v",
+    formula="v ~ 1 + signed_contrast + (1 + signed_contrast|participant_id)",
+    link="identity",
+    prior={
+        "Intercept": hssm.Prior("Normal", mu=0.0, sigma=3),
+        "1|participant_id": hssm.Prior(
+            "Normal",
+            mu=0.0,
+            sigma=hssm.Prior("Weibull",alpha = 1.5, beta = 0.3), 
+        ),
+        "signed_contrast": hssm.Prior("Normal", mu=0.0, sigma=2),
+        "signed_contrast|participant_id": hssm.Prior(
+            "Normal",
+            mu=0.0,
+            sigma=hssm.Prior("Weibull",alpha = 1, beta = 0.2), 
+        ),
+    },
+)
+
+param_z = hssm.Param(
+    "z",
+    formula="z ~ 1 + (1|participant_id)",
+    link="identity",
+    prior={
+        "Intercept": hssm.Prior("Gamma", mu=10, sigma=10, bounds=(0.01,.99)),
+        "1|participant_id": hssm.Prior(
+            "Normal",
+            mu=0.0,
+            sigma=hssm.Prior("Weibull",alpha = 1.5, beta = 0.3), 
+        )
+    },
+    bounds= (0.01,.99)
+)
+
+param_a = hssm.Param(
+    "a",
+    formula="a ~ 1 + (1|participant_id)",
+    link="identity",
+    prior={
+        "Intercept": hssm.Prior("Gamma", mu=1.5, sigma=1),
+        "1|participant_id": hssm.Prior(
+            "Normal",
+            mu=0.0,
+            sigma=hssm.Prior("Weibull",alpha = 1.5, beta = 0.3), 
+        )
+    },
+    bounds=(0.01, np.inf)
+)
+
+param_t = hssm.Param(
+    "t",
+    formula="t ~ 1 + (1|participant_id)",
+    link="identity",
+    prior={
+        "Intercept": hssm.Prior("Weibull", alpha=1, beta=0.2),
+        "1|participant_id": hssm.Prior(
+            "Normal",
+            mu=0.0,
+            sigma=hssm.Prior("Weibull", alpha = 1.5, beta = 0.3), 
+        )
+    },
+    bounds=(0.100, np.inf)
+)
+
+model_specs = [param_v, param_z, param_a, param_t]
+
+hssm_model = hssm.HSSM(data = dataset,
+                       model= "ddm",
+                       include=model_specs,
+                       loglik_kind="analytical")
+
+# hssm_model.model.plot_priors()
+
+hssm_model.sample(sampler="nuts_numpyro",
+                  cores=4,
+                  chains=4,
+                  draws=3000,
+                  tune=3000,
+                  idata_kwargs=dict(log_likelihood=True)
+    
+)
 
 # %%
 prevresp = dataset['prevresp'].values
@@ -271,8 +358,9 @@ with pm.Model() as prevresp_zv_pymc:
                                idata_kwargs=dict(log_likelihood=True))
     
 results =  az.summary(prevresp_zv_pymc_trace).reset_index()  # point estimate for each parameter and subject
-results.to_csv('m4_test_results_combined.csv')
-
+#results.to_csv('m4_test_results_combined.csv')
+results.to_csv('m3_test_results_combined.csv')
+prevresp_zv_pymc_trace.to_netcdf("prevresp_zv_pymc_traces.nc")
 #%%
 models = [no_hist_pymc_trace, prevresp_v_pymc_trace, prevresp_z_pymc_trace, prevresp_zv_pymc_trace]  # replace with your actual model traces
 
@@ -448,6 +536,299 @@ for i, metric in enumerate(metrics):
     annotate_bars(ax, "{:.2f}")
     plt.gca().tick_params(bottom=True, left=True)
     plt.gca().tick_params(labelbottom=True, labelleft=True)
+
+plt.tight_layout()
+plt.show()
+
+# %% Get unique participant IDs
+import hssm 
+
+participants = elife_data['participant_id'].unique()
+
+# Initialize a dictionary to store summaries
+summaries = {}
+
+# Loop over each participant
+for participant in participants:
+    # Subset data for the current participant
+    subj_dataset = elife_data[elife_data['participant_id'] == participant]
+
+    # Define model
+    sub_hssm_model = hssm.HSSM(data=subj_dataset,
+                               model="ddm",
+                            #    model="full_ddm",
+                               include=[
+        {
+            "name": "v",
+            "formula":"v ~ 1 + signed_contrast + prevresp"
+        },
+        {
+            "name": "z",
+            "formula":"z ~ 1 + prevresp",
+        }
+    ],
+                                # loglik_kind="blackbox",
+                                # sv = 0, sz = 0, st = 0)      
+                            #    loglik_kind="analytical")
+                               loglik_kind="approx_differentiable")
+
+    # Estimate model
+    subj_sample_res = sub_hssm_model.sample(
+        sampler="nuts_numpyro",
+        # sampler="mcmc",
+        cores=4,
+        chains=4,
+        draws=1000,
+        tune=1000,
+        # step = pm.Slice(model=sub_hssm_model.pymc_model)
+    )
+    # Create summary and store it in the dictionary
+    summaries[participant] = az.summary(subj_sample_res)
+
+for participants, dataframe in summaries.items():
+    # filename = f'HSSM_M4_fit_{participants}_MCMC.csv'
+    filename = f'HSSM_M4_fit_{participants}_nuts_numpyro_approx_differentiable.csv'
+    # filename = f'HSSM_M4_fit_{participants}_MCMC_analytical.csv'
+    # filename = f'HSSM_M4_fit_{participants}_MCMC_SLICE.csv'
+
+    dataframe.to_csv(filename, index=True)
+    print(f'Saved data for participant {participants} as {filename}')
+
+# %%
+
+def load_files(base_path):
+    dataframes_mcmc = {}
+    dataframes_slice = {}
+    dataframes_nuts_analytical = {}
+    dataframes_approx_differentiable = {}
+
+    # Find all MCMC and SLICE files
+    mcmc_files = glob.glob(os.path.join(base_path, 'HSSM_M4_fit_*_MCMC.csv'))
+    slice_files = glob.glob(os.path.join(base_path, 'HSSM_M4_fit_*_MCMC_SLICE.csv'))
+    analytical_files = glob.glob(os.path.join(base_path, 'HSSM_M4_fit_*_MCMC_analytical.csv'))
+    approx_differentiable_files = glob.glob(os.path.join(base_path, 'HSSM_M4_fit_*_nuts_numpyro_approx_differentiable.csv'))
+
+    # Load SLICE files and add participant_id, retain index
+    for file in slice_files:
+        subject_number = os.path.basename(file).split('_')[3]
+        df_slice = pd.read_csv(file, index_col=0)
+        df_slice['participant_id'] = subject_number
+        df_slice['sampler'] = "slice"
+        # Reset index to make 'parameter' column and store it in dictionary
+        dataframes_slice[subject_number] = df_slice.reset_index().rename(columns={'index': 'parameter'})
+
+    # Load MCMC files and add participant_id, set parameter based on corresponding SLICE file
+    for file in mcmc_files:
+        subject_number = os.path.basename(file).split('_')[3]
+        df_mcmc = pd.read_csv(file)
+        df_mcmc['participant_id'] = subject_number
+        df_mcmc['sampler'] = "nuts"
+        # Assign parameter column from corresponding SLICE DataFrame
+        if subject_number in dataframes_slice:
+            df_mcmc['parameter'] = dataframes_slice[subject_number]['parameter'].values
+        dataframes_mcmc[subject_number] = df_mcmc
+
+    for file in analytical_files:
+        subject_number = os.path.basename(file).split('_')[3]
+        df_ana = pd.read_csv(file, index_col=0)
+        df_ana['participant_id'] = subject_number
+        df_ana['sampler'] = "nuts_analytical"
+        # Reset index to make 'parameter' column and store it in dictionary
+        dataframes_nuts_analytical[subject_number] = df_ana.reset_index().rename(columns={'index': 'parameter'})
+        
+    for file in approx_differentiable_files:
+        subject_number = os.path.basename(file).split('_')[3]
+        df_LAN = pd.read_csv(file, index_col=0)
+        df_LAN['participant_id'] = subject_number
+        df_LAN['sampler'] = "numpyro_approx_differentiable"
+        # Reset index to make 'parameter' column and store it in dictionary
+        dataframes_approx_differentiable[subject_number] = df_LAN.reset_index().rename(columns={'index': 'parameter'})
+      
+      
+    return dataframes_mcmc, dataframes_slice, dataframes_nuts_analytical, dataframes_approx_differentiable
+
+base_path = script_dir 
+
+dataframes_mcmc, dataframes_slice, dataframes_nuts_analytical, dataframes_approx_differentiable = load_files(base_path)
+
+# Concatenate all the DataFrames into a single DataFrame
+all_data = pd.concat([pd.concat(dataframes_slice.values(), ignore_index=True),
+                      pd.concat(dataframes_mcmc.values(), ignore_index=True),
+                      pd.concat(dataframes_nuts_analytical.values(), ignore_index=True),
+                      pd.concat(dataframes_approx_differentiable.values(), ignore_index=True)], ignore_index=True)
+
+required_parameters = ['z_Intercept', 'z_prevresp', 'a', 't', 'v_prevresp', 'v_Intercept', 'v_signed_contrast']
+filtered_data = all_data[all_data['parameter'].isin(required_parameters)]
+
+filtered_data.to_csv('individual_fits_combined_data.csv', index=False)
+
+# %%
+import seaborn as sns
+import matplotlib.pyplot as plt
+%matplotlib inline
+
+average_r_hat = filtered_data.groupby(['sampler', 'parameter'])['r_hat'].mean().reset_index()
+average_estimate = filtered_data.groupby(['sampler', 'parameter'])['mean'].mean().reset_index()
+
+# Define the color palette
+palette = sns.color_palette("viridis", as_cmap=False)
+
+# Adjust overall aesthetics for publication quality
+sns.set(style='ticks', context='talk', palette=palette)
+
+# Plotting Average r_hat for each sampler by parameter
+plt.figure(figsize=(10, 6))
+ax = sns.barplot(x='parameter', y='r_hat', hue='sampler', data=average_r_hat, palette=palette)
+plt.title('Average $\\hat{R}$ by Parameter and Sampler')
+plt.xticks(rotation=45)
+plt.xlabel('Parameter')
+plt.ylabel('Average $\\hat{R}$')
+plt.legend(title='Sampler')
+sns.despine()  # Remove the top and right spines
+plt.tight_layout()
+plt.savefig('/Users/kiante/Documents/2023_choicehistory_HSSM/results/figures/Average_R_hat_by_Parameter_and_Sampler.png')
+plt.show()
+
+# Plotting Mean estimate for each sampler by parameter
+plt.figure(figsize=(10, 6))
+ax = sns.barplot(x='parameter', y='mean', hue='sampler', data=average_estimate, palette=palette)
+plt.title('Mean Estimates by Parameter and Sampler')
+plt.xticks(rotation=45)
+plt.xlabel('Parameter')
+plt.ylabel('Estimate')
+plt.legend(title='Sampler')
+sns.despine()  # Remove the top and right spines
+plt.tight_layout()
+plt.savefig('/Users/kiante/Documents/2023_choicehistory_HSSM/results/figures/Mean_Estimates_by_Parameter_and_Sampler.png')
+plt.show()
+
+# %%
+pivot_data = filtered_data.pivot_table(index=['participant_id', 'parameter'], columns='sampler', values='mean').reset_index()
+
+# Drop rows with any missing data to ensure a clean comparison
+pivot_data.dropna(inplace=True)
+
+# Set up the facet grid for plotting with scales specific to each plot for better visibility
+g = sns.FacetGrid(pivot_data, col='parameter', col_wrap=4, height=4, sharex=False, sharey=False)
+g.map_dataframe(sns.scatterplot, x='slice', y='nuts_analytical')
+
+# Draw identity lines and set axes limits specific to each plot for clarity
+for ax, (_, subdata) in zip(g.axes.flat, pivot_data.groupby('parameter')):
+    min_val = min(subdata['slice'].min(), subdata['nuts_analytical'].min())
+    max_val = max(subdata['slice'].max(), subdata['nuts_analytical'].max())
+    ax.plot([min_val, max_val], [min_val, max_val], 'gray', ls="--")
+    ax.set_xlim(min_val, max_val)
+    ax.set_ylim(min_val, max_val)
+
+# Set titles and labels
+g.set_axis_labels('Slice Mean Estimate', 'Nuts Mean Estimate')
+g.set_titles(col_template="{col_name}")
+g.add_legend()
+plt.show()
+
+# %%
+# Load the dataset
+data_path = '/Users/kiante/Downloads/visual_motion_2afc_fd_hddmfits.csv'
+data = pd.read_csv(data_path)
+# Select columns that include the subject number and columns with 'regressdczprevresplag1' in their names
+selected_data = data.filter(regex='subjnr|regressdczprevresplag1|t__stimcodingnohist')
+#t__regressdclag1
+# Rename the columns as specified previously
+selected_data = selected_data.rename(columns={
+    'subjnr': 'participant_id',
+    'a__regressdczprevresplag1': 'a',
+    't__stimcodingnohist': 't',
+    'v_Intercept__regressdczprevresplag1': 'v_Intercept',
+    'v_stimulus__regressdczprevresplag1': 'v_signed_contrast',
+    'v_prevresp__regressdczprevresplag1': 'v_prevresp',
+    'z_Intercept__regressdczprevresplag1': 'z_Intercept',
+    'z_prevresp__regressdczprevresplag1': 'z_prevresp'
+})
+ # 't__regressdczprevresplag1': 't',
+#t__regressdclag1
+selected_data['sampler'] = 'old_slice'
+
+melted_df = selected_data.melt(id_vars=["participant_id", "sampler"], var_name="parameter", value_name="old_slice")
+
+melted_df['participant_id'] = melted_df['participant_id'].astype(int)
+pivot_data['participant_id'] = pivot_data['participant_id'].astype(int)
+
+combined_df = pd.merge(pivot_data, melted_df, on=["participant_id", "parameter"], how="outer")
+
+# %% plot identiy lines 
+# Define palettes for each FacetGrid
+palette_deep = sns.color_palette('deep', n_colors=len(combined_df['parameter'].unique()))
+palette_pastel = sns.color_palette('pastel', n_colors=len(combined_df['parameter'].unique()))
+palette_set2 = sns.color_palette('Set2', n_colors=len(combined_df['parameter'].unique()))
+
+# First FacetGrid: Comparing 'slice' and 'nuts_analytical'
+g = sns.FacetGrid(combined_df, col='parameter', col_wrap=4, height=4, sharex=False, sharey=False, hue='parameter', palette=palette_deep)
+g.map_dataframe(sns.scatterplot, x='slice', y='nuts_analytical')
+
+# for ax, (_, subdata) in zip(g.axes.flat, combined_df.groupby('parameter')):
+#     min_val = min(subdata['slice'].min(), subdata['nuts_analytical'].min())
+#     max_val = max(subdata['slice'].max(), subdata['nuts_analytical'].max())
+#     ax.plot([min_val, max_val], [min_val, max_val], 'gray', ls="--")
+#     ax.set_xlim(min_val, max_val)
+#     ax.set_ylim(min_val, max_val)
+
+g.set_axis_labels('Slice Mean Estimate', 'Nuts Mean Estimate')
+g.set_titles(col_template="{col_name}")
+plt.savefig('/Users/kiante/Documents/2023_choicehistory_HSSM/results/figures/Slice_vs_Nuts_Analytical.png')
+plt.show()
+
+# Second FacetGrid: Comparing 'slice' and 'old_slice'
+g = sns.FacetGrid(combined_df, col='parameter', col_wrap=4, height=4, sharex=False, sharey=False, hue='parameter', palette=palette_pastel)
+g.map_dataframe(sns.scatterplot, x='slice', y='old_slice')
+
+# for ax, (_, subdata) in zip(g.axes.flat, combined_df.groupby('parameter')):
+#     min_val = min(subdata['slice'].min(), subdata['old_slice'].min())
+#     max_val = max(subdata['slice'].max(), subdata['old_slice'].max())
+#     ax.plot([min_val, max_val], [min_val, max_val], 'gray', ls="--")
+#     ax.set_xlim(min_val, max_val)
+#     ax.set_ylim(min_val, max_val)
+
+g.set_axis_labels('New Slice Mean Estimate', 'Old Slice Mean Estimate')
+g.set_titles(col_template="{col_name}")
+plt.savefig('/Users/kiante/Documents/2023_choicehistory_HSSM/results/figures/New_vs_Old_Slice.png')
+plt.show()
+
+# Third FacetGrid: Comparing 'nuts_analytical' and 'old_slice'
+g = sns.FacetGrid(combined_df, col='parameter', col_wrap=4, height=4, sharex=False, sharey=False, hue='parameter', palette=palette_set2)
+g.map_dataframe(sns.scatterplot, x='nuts_analytical', y='old_slice')
+
+# for ax, (_, subdata) in zip(g.axes.flat, combined_df.groupby('parameter')):
+#     min_val = min(subdata['nuts_analytical'].min(), subdata['old_slice'].min())
+#     max_val = max(subdata['nuts_analytical'].max(), subdata['old_slice'].max())
+#     ax.plot([min_val, max_val], [min_val, max_val], 'gray', ls="--")
+#     ax.set_xlim(min_val, max_val)
+#     ax.set_ylim(min_val, max_val)
+
+g.set_axis_labels('Nuts Analytical Mean Estimate', 'Old Slice Mean Estimate')
+g.set_titles(col_template="{col_name}")
+plt.savefig('/Users/kiante/Documents/2023_choicehistory_HSSM/results/figures/Nuts_Analytical_vs_Old_Slice.png')
+plt.show()
+
+# %% investiate really low estimates
+data_path = '/Users/kiante/Downloads/visual_motion_2afc_fd_hddmfits.csv'
+data = pd.read_csv(data_path)
+# Select columns that include the subject number and columns with 'regressdczprevresplag1' in their names
+# selected_data_ndt = data.filter(regex='subjnr|t_')
+# selected_data_t = data.filter(regex='prevresp')
+selected_data_t = data.filter(regex='^t_')
+
+# Define number of columns per row
+cols_per_row = 4  # Adjust based on how many plots you want per row
+num_rows = (len(selected_data_t.columns) + cols_per_row - 1) // cols_per_row  # Calculate the required number of rows
+
+# Plotting
+plt.figure(figsize=(20, 4 * num_rows))  # Adjust figure size based on number of rows
+for i, column in enumerate(selected_data_t.columns):
+    plt.subplot(num_rows, cols_per_row, i + 1)  # Create a subplot for each column
+    sns.histplot(selected_data_t[column], kde=False)
+    plt.title(column)
+    plt.xlabel('Value')
+    plt.ylabel('Frequency')
 
 plt.tight_layout()
 plt.show()
