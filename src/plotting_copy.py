@@ -56,12 +56,14 @@ prep = pd.DataFrame(get_prep(elife_data))
 excluded_participants = [11, 19, 20, 22, 26, 27, 28]
 
 # Filtering out the excluded subjects
-prep = prep[~prep['subj_idx'].isin(excluded_participants)]
+prep = prep[~prep['subj_idx'].isin(excluded_participants)].reset_index()
+elife_data_excluded = elife_data[~elife_data['subj_idx'].isin(excluded_participants)].reset_index()
+# remove or reset the index ! sample_subj_idx as a name !
 
 for file_name in os.listdir(directory):
     if file_name.endswith('.nc'):
         # Extract model name from the file name
-        model_name = file_name.split('_model')[0]
+        model_name = file_name.split('_excluded')[0]
 
         # Construct file path for the current .nc file
         file_path = os.path.join(directory, file_name)
@@ -78,9 +80,11 @@ for file_name in os.listdir(directory):
 
         # Read the CSV file
         results = pd.read_csv(results_file_path)
+        ## depends on the model name and order
         model_type = model_name.split("_")  # Extracting the model type from the model name
         
-        pattern_v = r'v_{}\|participant_id_offset\[\d+\]'.format(model_type[0])
+        ## may need to change subj_idx depend on the model
+        pattern_v = r'v_{}\|participant_id_offset\[\d+\]'.format(model_type[0]) 
         pattern_z = r'z_{}\|participant_id_offset\[\d+\]'.format(model_type[0])
 
         # 'v' model_type part
@@ -191,7 +195,7 @@ for file_name in os.listdir(directory):
         # Posterior Pred Plot #
         #plot_file_name = f"{model_name}_ppc_plot.png"
         #plot_file_path = os.path.join(plot_directory, plot_file_name)
-        #reattach(file_path, model, elife_data)
+        #reattach(file_path, model, elife_data_excluded)
         #az.style.use("arviz-doc")
         #pm.sample_posterior_predictive(model) #### before saving nc file
         #az.plot_ppc(model)
