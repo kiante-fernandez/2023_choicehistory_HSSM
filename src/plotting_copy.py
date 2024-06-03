@@ -10,6 +10,10 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import re
 import pymc as pm
+import statsmodels.api as sm
+import statsmodels
+import scipy as sp
+from utils_plot import corrfunc, dependent_corr,rz_ci,rho_rxy_rxz
 #import corrstats
 
 #%matplotlib inline
@@ -21,6 +25,8 @@ from utils_hssm import run_model, dic, aggregate_model_comparisons, reattach,fil
 
 # %% load data
 # Define the directory containing the .nc files
+#dir_path = os.path.dirname(os.path.realpath(__file__)) #gets the current path
+
 directory = r'c:\Users\Usuario\Desktop\Zeynep\2023_choicehistory_HSSM\results\models'
 plot_directory = r'c:\Users\Usuario\Desktop\Zeynep\2023_choicehistory_HSSM\results\figures'
 
@@ -51,18 +57,6 @@ excluded_participants = [11, 19, 20, 22, 26, 27, 28]
 
 # Filtering out the excluded subjects
 prep = prep[~prep['subj_idx'].isin(excluded_participants)]
-
-import os
-import arviz as az
-import matplotlib.pyplot as plt
-import statsmodels.api as sm
-import statsmodels
-import seaborn as sns
-import matplotlib.pyplot as plt
-import scipy as sp
-from utils_plot import corrfunc, dependent_corr,rz_ci,rho_rxy_rxz
-
-#import corrstats
 
 for file_name in os.listdir(directory):
     if file_name.endswith('.nc'):
