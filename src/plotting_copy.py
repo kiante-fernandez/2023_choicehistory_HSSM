@@ -26,7 +26,12 @@ from utils_hssm import run_model, dic, aggregate_model_comparisons, reattach,fil
 # %% load data
 # Define the directory containing the .nc files
 #dir_path = os.path.dirname(os.path.realpath(__file__)) #gets the current path
-
+model_mapping = {
+    'no_hist': 'm1',
+    'prevresp': 'm2',
+    'prevresp_z': 'm3',
+    'prevresp_zv': 'm4'
+}
 directory = r'c:\Users\Usuario\Desktop\Zeynep\2023_choicehistory_HSSM\results\models'
 plot_directory = r'c:\Users\Usuario\Desktop\Zeynep\2023_choicehistory_HSSM\results\figures'
 
@@ -52,18 +57,18 @@ prep = pd.DataFrame(get_prep(elife_data))
 
 
 #%%
-# List of subjects to exclude
-excluded_participants = [11, 19, 20, 22, 26, 27, 28]
-
-# Filtering out the excluded subjects
-prep = prep[~prep['subj_idx'].isin(excluded_participants)].reset_index()
-elife_data_excluded = elife_data[~elife_data['subj_idx'].isin(excluded_participants)].reset_index()
-# remove or reset the index ! sample_subj_idx as a name !
 
 for file_name in os.listdir(directory):
     if file_name.endswith('.nc'):
         # Extract model name from the file name
-        model_name = file_name.split('_excluded')[0]
+        model_name = file_name.split('_traces')[0]
+        # List of subjects to exclude
+        excluded_participants = [int(num.replace(".nc", "")) for num in file_name.split("_excluded")[1].split("_") if num]
+
+        # Filtering out the excluded subjects
+        prep = prep[~prep['subj_idx'].isin(excluded_participants)].reset_index()
+        elife_data_excluded = elife_data[~elife_data['subj_idx'].isin(excluded_participants)].reset_index()
+        # remove or reset the index ! sample_subj_idx as a name !
 
         # Construct file path for the current .nc file
         file_path = os.path.join(directory, file_name)
@@ -75,8 +80,9 @@ for file_name in os.listdir(directory):
             model_type = ''.join(char for char in ['v', 'z'] if char in model_name)
 
         print(f"The model type is: {model_type}" if model_type else "The model does not contain 'v' or 'z'")
-        
-        results_file_path = os.path.join(directory, f"{model_name}_results_combined.csv")
+
+        model_value = model_mapping.get(model_name, model_name)
+        results_file_path = os.path.join(directory, f"{model_value}_results_excluded_{'_'.join(map(str, excluded_participants))}.csv")
 
         # Read the CSV file
         results = pd.read_csv(results_file_path)
