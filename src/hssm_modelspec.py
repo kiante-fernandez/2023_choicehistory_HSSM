@@ -8,6 +8,8 @@
 # 2022/17/05      Kianté Fernandez<kiantefernan@gmail.com>   added make_model draft
 
 
+#TODO these still do not work (irrelgular sampling). Need to invetigate further 
+
 import pandas as pd
 import hssm
 
@@ -45,17 +47,6 @@ def make_model(data, mname_full):
     print(f'Model name: {mname}')
 
     model_specs = {
-    'nohist_stimcat': [
-        {"name": "v", 
-         "formula": "v ~ 0 + C(coherence) + (0+ C(coherence)|subj_idx)", #use for compare with continuous get a jumbo running
-         "link": "identity"},
-        # {"name": "a", 
-        #  "formula": "a ~ 1 + (1|subj_idx)", 
-        #  "link": "identity"},
-        # {"name": "t", 
-        #  "formula": "t ~ 1 + (1|subj_idx)", 
-        #  "link": "identity"}
-    ],    
     'nohist': [
         {"name": "v", 
          "formula": "v ~ 1 + signed_contrast + (1 + signed_contrast|subj_idx)", 
@@ -63,12 +54,6 @@ def make_model(data, mname_full):
         {"name": "z", 
          "formula": "z ~ 1 + (1|subj_idx)", 
          "link": "identity"},
-        # {"name": "a", 
-        #  "formula": "a ~ 1 + (1|subj_idx)", 
-        #  "link": "identity"}
-        # {"name": "t", 
-        #  "formula": "t ~ 1 + (1|subj_idx)", 
-        #  "link": "identity"}
     ],
     'prevresp_v': [
         {"name": "v", 
@@ -77,9 +62,6 @@ def make_model(data, mname_full):
         {"name": "z", 
          "formula": "z ~ 1 + (1|subj_idx)", 
          "link": "identity"}
-        # {"name": "a", 
-        #  "formula": "a ~ 1 + (1|subj_idx)", 
-        #  "link": "identity"}
     ],
     'prevresp_z': [
         {"name": "v", 
@@ -88,27 +70,7 @@ def make_model(data, mname_full):
         {"name": "z", 
          "formula": "z ~ 1 + prevresp + (1 + prevresp|subj_idx)", 
          "link": "identity"}
-        # {"name": "a", 
-        #  "formula": "a ~ 1 + (1|subj_idx)", 
-        #  "link": "identity"},
-        # {"name": "t", 
-        #  "formula": "t ~ 1 + (1|subj_idx)", 
-        #  "link": "identity"}
     ],
-    # 'stimcat_prevresp_zv': [
-    #     {"name": "v", 
-    #      "formula": "v ~ C(coherence) + prevresp + (C(coherence) + prevresp |subj_idx)", 
-    #      "link": "identity"},
-    #     {"name": "z", 
-    #      "formula": "z ~ 1 + prevresp + (1 + prevresp|subj_idx)",
-    #      "link": "identity"},
-    #     {"name": "a", 
-    #      "formula": "a ~ 1 + (1|subj_idx)", 
-    #      "link": "identity"}
-    #     # {"name": "t", 
-    #     #  "formula": "t ~ 1 + (1|subj_idx)", 
-    #     #  "link": "identity"}
-    # ],
     'prevresp_zv': [
         {"name": "v", 
          "formula": "v ~ signed_contrast + prevresp + (signed_contrast + prevresp |subj_idx)", 
@@ -116,15 +78,6 @@ def make_model(data, mname_full):
         {"name": "z", 
          "formula": "z ~ 1 + prevresp + (1 + prevresp|subj_idx)", 
          "link": "identity"}
-        # {"name": "a", 
-        #  "formula": "a ~ 1 + (1|subj_idx)", 
-        #  "link": "identity"}
-        # {"name": "a", 
-        #  "formula": "a ~ 1 + (1|subj_idx)", 
-        #  "link": "identity"},
-        # {"name": "t", 
-        #  "formula": "t ~ 1 + (1|subj_idx)", 
-        #  "link": "identity"}
     ]
     }
     if mname in model_specs:
@@ -139,7 +92,3 @@ def make_model(data, mname_full):
         raise ValueError('Model name not recognized!')
 
     return hssm_model
-
-
-#TODO the MCMC sampler. Try that. for the larger model (subject specific effect per subject)
-#ndt. is a test case ()
