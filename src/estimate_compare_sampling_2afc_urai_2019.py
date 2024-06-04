@@ -194,6 +194,9 @@ plt.savefig(os.path.join(results_dir, 'Mean_Estimates_by_Parameter_and_Sampler.p
 plt.show()
 
 # %% Identity plots 
+pivot_data = filtered_data.pivot_table(index=['participant_id', 'parameter'], columns='sampler', values='mean').reset_index()
+# Drop rows with any missing data to ensure a clean comparison
+pivot_data.dropna(inplace=True)
 # Load the dataset
 data = pd.read_csv(os.path.join(data_file_path, 'visual_motion_2afc_fd_hddmfits.csv'))
 # Select columns that include the subject number and columns with 'regressdczprevresplag1' in their names
@@ -214,11 +217,7 @@ selected_data = data.rename(columns=rename_dict)
 columns_to_keep = list(rename_dict.values())  # List of new names based on the renaming dictionary
 selected_data = selected_data[columns_to_keep]
 
-# selected_data = data.filter(regex='subjnr|stimcodingdczprevresp') # noted from Anne as the parameters that I used in the main paper. File has mutiple copies of each need to follow up.
-# 't__regressdczprevresplag1': 't',
-#t__regressdclag1
 selected_data['sampler'] = 'old_slice'
-
 melted_df = selected_data.melt(id_vars=["participant_id", "sampler"], var_name="parameter", value_name="old_slice")
 melted_df['participant_id'] = melted_df['participant_id'].astype(int)
 pivot_data['participant_id'] = pivot_data['participant_id'].astype(int)
@@ -277,26 +276,4 @@ g.set_axis_labels('Nuts Analytical Mean Estimate', 'Old Slice Mean Estimate')
 g.set_titles(col_template="{col_name}")
 plt.savefig(os.path.join(results_dir, 'Nuts_Analytical_vs_Old_Slice.png'))
 plt.show()
-
-# %% investiate really low estimates
-data = pd.read_csv(os.path.join(data_file_path, 'visual_motion_2afc_fd_hddmfits.csv'))
-# Select columns that include the subject number and columns with 'regressdczprevresplag1' in their names
-# selected_data_ndt = data.filter(regex='subjnr|t_')
-# selected_data_t = data.filter(regex='prevresp')
-selected_data_t = data.filter(regex='^t_')
-
-# Define number of columns per row
-cols_per_row = 4  # Adjust based on how many plots you want per row
-num_rows = (len(selected_data_t.columns) + cols_per_row - 1) // cols_per_row  # Calculate the required number of rows
-
-# Plotting
-plt.figure(figsize=(20, 4 * num_rows))  # Adjust figure size based on number of rows
-for i, column in enumerate(selected_data_t.columns):
-    plt.subplot(num_rows, cols_per_row, i + 1)  # Create a subplot for each column
-    sns.histplot(selected_data_t[column], kde=False)
-    plt.title(column)
-    plt.xlabel('Value')
-    plt.ylabel('Frequency')
-
-plt.tight_layout()
-plt.show()
+# %%
