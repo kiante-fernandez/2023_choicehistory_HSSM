@@ -92,3 +92,89 @@ def make_model(data, mname_full):
         raise ValueError('Model name not recognized!')
 
     return hssm_model
+
+
+#%% draft of better version? 
+
+# param_v = hssm.Param(
+#     "v",
+#     formula="v ~ 1 + signed_contrast + (1 + signed_contrast|participant_id)",
+#     link="identity",
+#     prior={
+#         "Intercept": hssm.Prior("Normal", mu=0.0, sigma=3),
+#         "1|participant_id": hssm.Prior(
+#             "Normal",
+#             mu=0.0,
+#             sigma=hssm.Prior("Weibull",alpha = 1.5, beta = 0.3), 
+#         ),
+#         "signed_contrast": hssm.Prior("Normal", mu=0.0, sigma=2),
+#         "signed_contrast|participant_id": hssm.Prior(
+#             "Normal",
+#             mu=0.0,
+#             sigma=hssm.Prior("Weibull",alpha = 1, beta = 0.2), 
+#         ),
+#     },
+# )
+
+# param_z = hssm.Param(
+#     "z",
+#     formula="z ~ 1 + (1|participant_id)",
+#     link="identity",
+#     prior={
+#         "Intercept": hssm.Prior("Gamma", mu=10, sigma=10, bounds=(0.01,.99)),
+#         "1|participant_id": hssm.Prior(
+#             "Normal",
+#             mu=0.0,
+#             sigma=hssm.Prior("Weibull",alpha = 1.5, beta = 0.3), 
+#         )
+#     },
+#     bounds= (0.01,.99)
+# )
+
+# param_a = hssm.Param(
+#     "a",
+#     formula="a ~ 1 + (1|participant_id)",
+#     link="identity",
+#     prior={
+#         "Intercept": hssm.Prior("Gamma", mu=1.5, sigma=1),
+#         "1|participant_id": hssm.Prior(
+#             "Normal",
+#             mu=0.0,
+#             sigma=hssm.Prior("Weibull",alpha = 1.5, beta = 0.3), 
+#         )
+#     },
+#     bounds=(0.01, np.inf)
+# )
+
+# param_t = hssm.Param(
+#     "t",
+#     formula="t ~ 1 + (1|participant_id)",
+#     link="identity",
+#     prior={
+#         "Intercept": hssm.Prior("Weibull", alpha=1, beta=0.2),
+#         "1|participant_id": hssm.Prior(
+#             "Normal",
+#             mu=0.0,
+#             sigma=hssm.Prior("Weibull", alpha = 1.5, beta = 0.3), 
+#         )
+#     },
+#     bounds=(0.100, np.inf)
+# )
+
+# model_specs = [param_v, param_z, param_a, param_t]
+
+# hssm_model = hssm.HSSM(data = dataset,
+#                        model= "ddm",
+#                        include=model_specs,
+#                        loglik_kind="analytical")
+
+# # hssm_model.model.plot_priors()
+
+# hssm_model.sample(sampler="nuts_numpyro",
+#                   cores=4,
+#                   chains=4,
+#                   draws=3000,
+#                   tune=3000,
+#                   idata_kwargs=dict(log_likelihood=True)
+    
+# )
