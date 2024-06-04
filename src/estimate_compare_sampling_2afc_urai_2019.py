@@ -16,13 +16,14 @@ import glob
 import seaborn as sns
 import matplotlib.pyplot as plt
 from hssm import set_floatX
+#import hssm 
 
 #%matplotlib inline
 set_floatX("float32")
 #%% load data
 script_dir = os.path.dirname(os.path.realpath(__file__))
 data_file_path = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM', 'data')
-results_dir = os.path.join(script_dir, 'results', 'figures')
+results_dir = os.path.join(script_dir, '..', 'results', 'figures')
 
 elife_data = pd.read_csv(os.path.join(data_file_path, 'visual_motion_2afc_fd.csv'))
 
@@ -149,6 +150,14 @@ filtered_data = all_data[all_data['parameter'].isin(required_parameters)]
 #save 
 filtered_data.to_csv('individual_fits_combined_data.csv', index=False)
 # %% plot the results of subject-level estimate contrasts
+# Generate the path to the results folder
+results_dir = os.path.join(script_dir, '..', 'results', 'figures')
+
+contrast_results_dir = os.path.join(script_dir, '..', 'results', 'contrasting_estimation_exercise_20240514')
+contrast_results_dir = os.path.normpath(contrast_results_dir)
+csv_file_path = os.path.join(contrast_results_dir, 'individual_fits_combined_data.csv')
+filtered_data = pd.read_csv(csv_file_path)
+
 average_r_hat = filtered_data.groupby(['sampler', 'parameter'])['r_hat'].mean().reset_index()
 average_estimate = filtered_data.groupby(['sampler', 'parameter'])['mean'].mean().reset_index()
 
@@ -185,48 +194,27 @@ plt.savefig(os.path.join(results_dir, 'Mean_Estimates_by_Parameter_and_Sampler.p
 plt.show()
 
 # %% Identity plots 
-
-pivot_data = filtered_data.pivot_table(index=['participant_id', 'parameter'], columns='sampler', values='mean').reset_index()
-
-# Drop rows with any missing data to ensure a clean comparison
-pivot_data.dropna(inplace=True)
-
-# Set up the facet grid for plotting with scales specific to each plot for better visibility
-g = sns.FacetGrid(pivot_data, col='parameter', col_wrap=4, height=4, sharex=False, sharey=False)
-g.map_dataframe(sns.scatterplot, x='slice', y='nuts_analytical')
-
-# Draw identity lines and set axes limits specific to each plot for clarity
-for ax, (_, subdata) in zip(g.axes.flat, pivot_data.groupby('parameter')):
-    min_val = min(subdata['slice'].min(), subdata['nuts_analytical'].min())
-    max_val = max(subdata['slice'].max(), subdata['nuts_analytical'].max())
-    ax.plot([min_val, max_val], [min_val, max_val], 'gray', ls="--")
-    ax.set_xlim(min_val, max_val)
-    ax.set_ylim(min_val, max_val)
-
-# Set titles and labels
-g.set_axis_labels('Slice Mean Estimate', 'Nuts Mean Estimate')
-g.set_titles(col_template="{col_name}")
-g.add_legend()
-plt.show()
-
-# %% compare with prior estimates
 # Load the dataset
-data_path = pd.read_csv(os.path.join(data_file_path, 'visual_motion_2afc_fd_hddmfits.csv'))
-data = pd.read_csv(data_path)
+data = pd.read_csv(os.path.join(data_file_path, 'visual_motion_2afc_fd_hddmfits.csv'))
 # Select columns that include the subject number and columns with 'regressdczprevresplag1' in their names
-selected_data = data.filter(regex='subjnr|regressdczprevresplag1|t__stimcodingnohist')
-#t__regressdclag1
-# Rename the columns as specified previously
-selected_data = selected_data.rename(columns={
+selected_data = data.filter(regex='subjnr|regressdczprevresplag1|t__stimcodingdczprevresp')
+
+rename_dict = {
     'subjnr': 'participant_id',
     'a__regressdczprevresplag1': 'a',
-    't__stimcodingnohist': 't',
+    't__stimcodingdczprevresp': 't',
     'v_Intercept__regressdczprevresplag1': 'v_Intercept',
     'v_stimulus__regressdczprevresplag1': 'v_signed_contrast',
     'v_prevresp__regressdczprevresplag1': 'v_prevresp',
     'z_Intercept__regressdczprevresplag1': 'z_Intercept',
     'z_prevresp__regressdczprevresplag1': 'z_prevresp'
-})
+}
+selected_data = data.rename(columns=rename_dict)
+
+columns_to_keep = list(rename_dict.values())  # List of new names based on the renaming dictionary
+selected_data = selected_data[columns_to_keep]
+
+# selected_data = data.filter(regex='subjnr|stimcodingdczprevresp') # noted from Anne as the parameters that I used in the main paper. File has mutiple copies of each need to follow up.
 # 't__regressdczprevresplag1': 't',
 #t__regressdclag1
 selected_data['sampler'] = 'old_slice'
@@ -291,7 +279,7 @@ plt.savefig(os.path.join(results_dir, 'Nuts_Analytical_vs_Old_Slice.png'))
 plt.show()
 
 # %% investiate really low estimates
-data = pd.read_csv(data_path)
+data = pd.read_csv(os.path.join(data_file_path, 'visual_motion_2afc_fd_hddmfits.csv'))
 # Select columns that include the subject number and columns with 'regressdczprevresplag1' in their names
 # selected_data_ndt = data.filter(regex='subjnr|t_')
 # selected_data_t = data.filter(regex='prevresp')
