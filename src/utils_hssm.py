@@ -58,7 +58,7 @@ hssm.HSSM.saveInferenceData = saveInferenceData
 
 def run_model(data, modelname, mypath, trace_id=0, **kwargs):
 
-    from hssm_modelspec import make_model # specifically for HSSM models
+    from src.utils_hssm_modelspec import make_model # specifically for HSSM models
 
     print('HSSM version: ', hssm.__version__)
 
@@ -143,7 +143,7 @@ def aggregate_model_comparisons(directory):
 
 def reattach(filename, model, data):
     import arviz as az
-    from hssm_modelspec import make_model
+    from src.utils_hssm_modelspec import make_model
     #load the inferenceData object
     inferd = az.from_netcdf(filename)
     #reattch to the model
