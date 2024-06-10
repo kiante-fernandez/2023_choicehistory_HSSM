@@ -1,0 +1,86 @@
+library(readr)
+library(ggplot2)
+library(gridExtra)
+
+visual_motion_2afc_fd <- read_csv("data/visual_motion_2afc_fd.csv")
+
+visual_motion_2afc_fd$signed_contrast <- visual_motion_2afc_fd$coherence * visual_motion_2afc_fd$stimulus
+
+visual_motion_2afc_fd$response <- ifelse(visual_motion_2afc_fd$response == 0, -1, 1)
+visual_motion_2afc_fd$accuracy <- ifelse(visual_motion_2afc_fd$response == visual_motion_2afc_fd$stimulus,1,0)
+
+visual_motion_2afc_fd$rt <- round(visual_motion_2afc_fd$rt, 5)
+
+visual_motion_2afc_fd$stimrepeat <- ifelse(visual_motion_2afc_fd$stimulus == lag(visual_motion_2afc_fd$prevstim), 1, 0)
+
+visual_motion_2afc_fd$Repeat <- ifelse(visual_motion_2afc_fd$response == lag(visual_motion_2afc_fd$prevresp), 1, 0)
+
+# RT dist
+plot_list <- list()
+
+for (subject_id in unique(visual_motion_2afc_fd$subj_idx)) {
+  subject_data <- subset(visual_motion_2afc_fd, subj_idx == subject_id)
+  
+  
+  p <- ggplot(subject_data, aes(x = rt)) +
+    geom_histogram(binwidth = 0.1, fill = "skyblue", color = "black") +
+    labs(title = paste("Subject", subject_id), x = "RT", y = "Frequency") +
+    theme_minimal()
+  
+  
+  plot_list[[length(plot_list) + 1]] <- p
+}
+
+
+ncols <- 2
+nrows <- 3
+plots_per_page <- ncols * nrows
+
+plot_pages <- split(plot_list, ceiling(seq_along(plot_list) / plots_per_page))
+
+grid_pages_list <- lapply(plot_pages, function(page_plots) {
+  do.call(grid.arrange, c(page_plots, ncol = ncols, nrow = nrows))
+})
+
+for (i in seq_along(grid_pages_list)) {
+  cat(sprintf("Page %d\n", i))
+  print(grid_pages_list[[i]])
+  cat("\n")
+}
+
+#Response dist
+
+bar_plot_list <- list()
+
+for (subject_id in unique(visual_motion_2afc_fd$subj_idx)) {
+  subject_data <- subset(visual_motion_2afc_fd, subj_idx == subject_id)
+  
+  response_freq <- table(factor(subject_data$accuracy, levels = c(0, 1)))
+  response_freq_df <- as.data.frame(response_freq)  # Convert table to data frame
+  
+  # Create a bar plot
+  p <- ggplot(response_freq_df, aes(x = Var1, y = Freq, fill = Var1)) +
+    geom_bar(stat = "identity") +
+    labs(title = paste("Subject", subject_id), x = "Response", y = "Frequency") +
+    theme_minimal()
+  
+  # Add the bar plot to the list
+  bar_plot_list[[length(bar_plot_list) + 1]] <- p
+}
+
+# Split bar plots into pages
+bar_plot_pages <- split(bar_plot_list, ceiling(seq_along(bar_plot_list) / plots_per_page))
+
+# Create a list to store the grid pages
+grid_pages_list2 <- lapply(bar_plot_pages, function(page_bar_plots) {
+  do.call(gridExtra::grid.arrange, c(page_bar_plots, ncol = ncols, nrow = nrows))
+})
+
+# Display each page
+for (i in seq_along(grid_pages_list2)) {
+  cat(sprintf("Page %d\n", i))
+  print(grid_pages_list2[[i]])
+  cat("\n")
+}
+file_name = "ddm_prevresp_v_model.nc"
+model_name = 

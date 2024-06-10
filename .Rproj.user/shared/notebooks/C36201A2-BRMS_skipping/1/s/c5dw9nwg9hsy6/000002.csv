@@ -1,0 +1,55 @@
+"0","```r
+summary(brm_eng_ffd)
+```"
+"1"," Family: exgaussian 
+  Links: mu = identity; sigma = identity; beta = identity 
+Formula: ffd ~ cond + (cond | subject) + (cond | sentence_nr) 
+   Data: data (Number of observations: 3497) 
+  Draws: 4 chains, each with iter = 5000; warmup = 2000; thin = 1;
+         total post-warmup draws = 12000
+
+Group-Level Effects: 
+~sentence_nr (Number of levels: 290) 
+                                    Estimate Est.Error l-95% CI u-95% CI
+sd(Intercept)                           2.88      2.10     0.12     7.55
+sd(condidentical_vs_the)                5.28      2.48     0.36     9.53
+cor(Intercept,condidentical_vs_the)     0.14      0.53    -0.90     0.96
+                                    Rhat Bulk_ESS Tail_ESS
+sd(Intercept)                       1.00     1429     2872
+sd(condidentical_vs_the)            1.00     1050     2044
+cor(Intercept,condidentical_vs_the) 1.00     1220     2618
+
+~subject (Number of levels: 23) 
+                                    Estimate Est.Error l-95% CI u-95% CI
+sd(Intercept)                          25.23      4.26    18.54    35.02
+sd(condidentical_vs_the)                2.09      1.40     0.10     5.17
+cor(Intercept,condidentical_vs_the)     0.23      0.46    -0.79     0.94
+                                    Rhat Bulk_ESS Tail_ESS
+sd(Intercept)                       1.00     2413     5412
+sd(condidentical_vs_the)            1.00     3164     5178
+cor(Intercept,condidentical_vs_the) 1.00    12391     7017
+
+Population-Level Effects: 
+                     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS
+Intercept              235.89      5.56   224.99   246.86 1.00     1324
+condidentical_vs_the     0.57      1.10    -1.59     2.75 1.00     9507
+                     Tail_ESS
+Intercept                2633
+condidentical_vs_the     9109
+
+Family Specific Parameters: 
+      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+sigma    25.40      1.15    23.22    27.67 1.00    10504     8650
+beta     75.07      1.81    71.58    78.72 1.00    13317     8825
+
+Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
+and Tail_ESS are effective sample size measures, and Rhat is the potential
+scale reduction factor on split chains (at convergence, Rhat = 1).
+"
+"0","```r
+del_hdi <- hdi(brm_eng_ffd, ci = c(0.50,0.75,0.89,0.95))
+plot(del_hdi) +scale_fill_flat()+theme_apa()
+```"
+"1","Scale for fill is already present.
+Adding another scale for fill, which will replace the existing scale.
+"

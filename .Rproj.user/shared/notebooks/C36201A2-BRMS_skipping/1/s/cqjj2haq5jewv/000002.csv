@@ -1,0 +1,5 @@
+"0","```r
+summary(brm_eng_gp)
+del_hdi <- hdi(brm_eng_gp, ci = c(0.50,0.75,0.89,0.95))
+plot(del_hdi) +scale_fill_flat()+theme_apa()
+```"

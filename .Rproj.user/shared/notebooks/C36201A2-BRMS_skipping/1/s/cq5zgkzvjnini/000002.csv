@@ -1,0 +1,12 @@
+"0","```r
+fix_time_measures_all %>% 
+  dplyr::filter(target_word_nr == word_nr) %>% 
+  dplyr::group_by(language,cond) %>%
+  dplyr::summarise(ffd_mean = mean(ffd, na.rm = TRUE),
+            gd_mean = mean(gd, na.rm = TRUE),
+            gopast_mean = mean(gopast, na.rm = TRUE),
+            tvt_mean = mean(tvt, na.rm = TRUE),
+            skipping_mean = mean(skipping, na.rm = TRUE))
+```"
+"1","`summarise()` has grouped output by 'language'. You can override using the `.groups` argument.
+"
