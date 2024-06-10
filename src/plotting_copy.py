@@ -24,18 +24,21 @@ from hssm_modelspec import make_model # specifically for hssm models
 from utils_hssm import run_model, dic, aggregate_model_comparisons, reattach,filter_group_level_params
 
 # %% load data
-# Define the directory containing the .nc files
 #dir_path = os.path.dirname(os.path.realpath(__file__)) #gets the current path
+
+# Map the model types for cvs files
 model_mapping = {
     'no_hist': 'm1',
     'prevresp': 'm2',
     'prevresp_z': 'm3',
     'prevresp_zv': 'm4'
 }
+
+# Directory for the nc files and for saving the plots
 directory = r'c:\Users\Usuario\Desktop\Zeynep\2023_choicehistory_HSSM\results\models'
 plot_directory = r'c:\Users\Usuario\Desktop\Zeynep\2023_choicehistory_HSSM\results\figures'
 
-# Define elife_data (assuming it's already defined)
+# Load the data (elife)
 script_dir = os.path.dirname(os.path.realpath(__file__))
 data_file_path = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM', 'data')
 elife_data = pd.read_csv(os.path.join(data_file_path, 'visual_motion_2afc_fd.csv'))
@@ -44,7 +47,7 @@ elife_data['signed_contrast'] = elife_data['coherence'] * elife_data['stimulus']
 
 elife_data['response'] = elife_data['response'].replace({0: -1, 1: 1})
 
-# # add some more history measures
+# Add some more history measures
 elife_data['stimrepeat'] = np.where(elife_data.stimulus == elife_data.prevstim, 1, 0)
 elife_data['repeat'] = np.where(elife_data.response == elife_data.prevresp, 1, 0)
 def get_prep(data):
@@ -55,9 +58,8 @@ def get_prep(data):
 
 prep = pd.DataFrame(get_prep(elife_data))
 
-
 #%%
-
+## Plotting loop ##
 for file_name in os.listdir(directory):
     if file_name.endswith('.nc'):
         # Extract model name from the file name
@@ -68,19 +70,22 @@ for file_name in os.listdir(directory):
         # Filtering out the excluded subjects
         prep = prep[~prep['subj_idx'].isin(excluded_participants)].reset_index()
         elife_data_excluded = elife_data[~elife_data['subj_idx'].isin(excluded_participants)].reset_index()
-        # remove or reset the index ! sample_subj_idx as a name !
+        # Remove or reset the index ! sample_subj_idx as a name !
 
         # Construct file path for the current .nc file
         file_path = os.path.join(directory, file_name)
-
+        
+        # Load the model
         model = az.from_netcdf(file_path)
         model_type = None
 
+        # Extract the model type informations
         if any(char in model_name for char in ['v', 'z']):
             model_type = ''.join(char for char in ['v', 'z'] if char in model_name)
 
         print(f"The model type is: {model_type}" if model_type else "The model does not contain 'v' or 'z'")
 
+        # Prepare for loading the csv result file
         model_value = model_mapping.get(model_name, model_name)
         results_file_path = os.path.join(directory, f"{model_value}_results_excluded_{'_'.join(map(str, excluded_participants))}.csv")
 
@@ -90,6 +95,8 @@ for file_name in os.listdir(directory):
         model_type = model_name.split("_")  # Extracting the model type from the model name
         
         ## may need to change subj_idx depend on the model
+
+        # Creates the regular expression pattern to extract subject predictions
         pattern_v = r'v_{}\|participant_id_offset\[\d+\]'.format(model_type[0]) 
         pattern_z = r'z_{}\|participant_id_offset\[\d+\]'.format(model_type[0])
 
