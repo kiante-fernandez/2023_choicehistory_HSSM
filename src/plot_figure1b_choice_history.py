@@ -19,14 +19,19 @@ sns.set(style="ticks", context="paper", palette="colorblind")
 tools.seaborn_style()
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
-data_file_path = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM', 'data')
+
+# Construct the path to the data file
+dataset = 'ibl_trainingChoiceWorld_clean.csv'
 fig_file_path = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM','results', 'figures')
+data_file_path = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM', 'data', dataset)
+
+#load data
+data = pd.read_csv(data_file_path)
 
 # %% ================================= #
 # USE THE SAME FILE AS FOR HDDM FITS
 # ================================= #
 
-data = pd.read_csv(os.path.join(data_file_path, 'ibl_trainingchoiceworld_clean.csv'))
 data.head(n=10)
 data['previous_trial'] = 100*data.prevfb + 10*data.prevresp  # for color coding
 cmap = sns.color_palette("Paired")
@@ -44,7 +49,7 @@ fig.set_axis_labels('Signed contrast (%)', 'Rightward choice (%)')
 for axidx, ax in enumerate(fig.axes.flat):
         ax.set_title('c. History-dependent psychometric')
 fig.despine(trim=True)
-fig.savefig(os.path.join(fig_file_path, "psychfuncs_history_average.png"))
+fig.savefig(os.path.join(fig_file_path, "%s_psychfuncs_history.png"%dataset), dpi=300)
 plt.close('all')
 
 # #%%  plot one curve for each animal, one panel per lab
@@ -82,6 +87,7 @@ plt.close('all')
 # fig.despine(trim=True)
 # fig.savefig(os.path.join(figpath, "psychfuncs_history_permouse.png"))
 
+
 #%% also previous history chronometric 
 # plot one curve for each animal, one panel per lab
 fig = sns.FacetGrid(data, hue='previous_trial', palette=cmap,
@@ -92,7 +98,7 @@ for axidx, ax in enumerate(fig.axes.flat):
         ax.set_title('d. History-dependent chronometric')
         ax.set_ylim([0, 0.7])
 fig.despine(trim=True)
-fig.savefig(os.path.join(fig_file_path, "chronfuncs_history_average.png"))
+fig.savefig(os.path.join(fig_file_path, "%s_chronfuncs_history.png"%dataset), dpi=300)
 plt.close('all')
 
 # %%

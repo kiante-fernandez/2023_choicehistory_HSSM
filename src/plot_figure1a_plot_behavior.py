@@ -14,7 +14,7 @@ import seaborn as sns
 import psychofit as pf
 import utils_plot as tools
 import utils_choice_history as more_tools
-import hssm.plotting
+# import hssm.plotting
 
 ## INITIALIZE A FEW THINGS
 tools.seaborn_style()
@@ -23,9 +23,9 @@ tools.seaborn_style()
 script_dir = os.path.dirname(os.path.realpath(__file__))
 
 # Construct the path to the data file
+dataset = 'ibl_trainingChoiceWorld_clean.csv'
 fig_file_path = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM','results', 'figures')
-data_file_path = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM', 'data', 'ibl_trainingchoiceworld_clean.csv')
-#data_file_path = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM', 'data', 'visual_motion_2afc_fd.csv')
+data_file_path = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM', 'data', dataset)
 
 #load data
 data = pd.read_csv(data_file_path)
@@ -48,8 +48,8 @@ fig.despine(trim=True)
 fig.set_axis_labels('Signed contrast (%)', 'Rightward choice (%)')
 ax.set_title('a. Psychometric function (n = %d)'%data.subj_idx.nunique())
 
-fig.savefig(os.path.join(fig_file_path, "psychfuncs_allmice.png"), dpi=300)
-fig.savefig(os.path.join(fig_file_path, "psychfuncs_allmice.pdf"))
+fig.savefig(os.path.join(fig_file_path, "%s_psychfuncs.png"%dataset), dpi=300)
+# fig.savefig(os.path.join(fig_file_path, "psychfuncs_allmice.pdf"))
 
 # %% ================================= #
 # CHRONFUNCS on good RTs
@@ -64,5 +64,5 @@ for axidx, ax in enumerate(fig.axes.flat):
 fig.despine(trim=True)
 fig.set_axis_labels('Signed contrast (%)', 'RT (s)')
 ax.set_title('b. Chronometric function (n = %d)'%data.subj_idx.nunique())
-fig.savefig(os.path.join(fig_file_path, "chronfuncs_allmice.png"))
-fig.savefig(os.path.join(fig_file_path, "chronfuncs_allmice.pdf"))
+fig.savefig(os.path.join(fig_file_path, "%s_chronfuncs.png"%dataset), dpi=300)
+# fig.savefig(os.path.join(fig_file_path, "chronfuncs_allmice.pdf"))

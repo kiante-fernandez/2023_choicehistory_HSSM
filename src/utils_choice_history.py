@@ -8,13 +8,13 @@ def compute_choice_history(trials):
 
     # append choice history 
     trials['prevresp']      = trials.response.shift(1)
-    trials['prevfb']        = trials.feedbackType.shift(1)
+    trials['prevfb']        = trials.correct.shift(1)
     trials['prevcontrast']  = np.abs(trials.signed_contrast.shift(1))
 
-    # also append choice future (for correction a la Lak et al.)
-    trials['nextresp']      = trials.response.shift(-1)
-    trials['nextfb']        = trials.feedbackType.shift(-1)
-    trials['nextcontrast']  = np.abs(trials.signed_contrast.shift(-1))
+    # # also append choice future (for correction a la Lak et al.)
+    # trials['nextresp']      = trials.response.shift(-1)
+    # trials['nextfb']        = trials.correct.shift(-1)
+    # trials['nextcontrast']  = np.abs(trials.signed_contrast.shift(-1))
 
     # remove when not consecutive based on trial_index
     trials_not_consecutive       = (trials.trialnum - trials.trialnum.shift(1)) != 1.
