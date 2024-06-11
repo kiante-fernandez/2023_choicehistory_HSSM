@@ -20,7 +20,7 @@ from utils_plot import corrfunc, dependent_corr,rz_ci,rho_rxy_rxz
 from ssms.basic_simulators.simulator import simulator
 hssm.set_floatX("float32")
 
-from hssm_modelspec import make_model # specifically for hssm models
+from utils_hssm_modelspec import make_model # specifically for hssm models
 from utils_hssm import run_model, dic, aggregate_model_comparisons, reattach,filter_group_level_params
 
 # %% load data
