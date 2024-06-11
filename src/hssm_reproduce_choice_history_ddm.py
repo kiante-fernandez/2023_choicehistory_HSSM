@@ -20,7 +20,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import re
 
-from src.utils_hssm_modelspec import make_model 
+from utils_hssm_modelspec import make_model 
 from utils_hssm import run_model, reattach
 
 # %% load data

@@ -49,34 +49,34 @@ def make_model(data, mname_full):
     model_specs = {
     'nohist': [
         {"name": "v", 
-         "formula": "v ~ 1 + signed_contrast + (1 + signed_contrast|subj_idx)", 
+         "formula": "v ~ 1 + signed_contrast + (1 + signed_contrast|participant_id)", 
          "link": "identity"},
         {"name": "z", 
-         "formula": "z ~ 1 + (1|subj_idx)", 
+         "formula": "z ~ 1 + (1|participant_id)", 
          "link": "identity"},
     ],
     'prevresp_v': [
         {"name": "v", 
-         "formula": "v ~ 1 + signed_contrast + prevresp + (1 + signed_contrast + prevresp|subj_idx)", 
+         "formula": "v ~ 1 + signed_contrast + prevresp + (1 + signed_contrast + prevresp|participant_id)", 
          "link": "identity"},
         {"name": "z", 
-         "formula": "z ~ 1 + (1|subj_idx)", 
+         "formula": "z ~ 1 + (1|participant_id)", 
          "link": "identity"}
     ],
     'prevresp_z': [
         {"name": "v", 
-         "formula": "v ~ 1 + signed_contrast + (1 + signed_contrast |subj_idx)", 
+         "formula": "v ~ 1 + signed_contrast + (1 + signed_contrast |participant_id)", 
          "link": "identity"},
         {"name": "z", 
-         "formula": "z ~ 1 + prevresp + (1 + prevresp|subj_idx)", 
+         "formula": "z ~ 1 + prevresp + (1 + prevresp|participant_id)", 
          "link": "identity"}
     ],
     'prevresp_zv': [
         {"name": "v", 
-         "formula": "v ~ signed_contrast + prevresp + (signed_contrast + prevresp |subj_idx)", 
+         "formula": "v ~ signed_contrast + prevresp + (signed_contrast + prevresp |participant_id)", 
          "link": "identity"},
         {"name": "z", 
-         "formula": "z ~ 1 + prevresp + (1 + prevresp|subj_idx)", 
+         "formula": "z ~ 1 + prevresp + (1 + prevresp|participant_id)", 
          "link": "identity"}
     ]
     }
