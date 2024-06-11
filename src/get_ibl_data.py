@@ -34,7 +34,12 @@ if not one.offline:
     print(one.alyx.base_url)
 
 # define path to save the data and figures
-datapath = 'data'
+# Get the directory of the script being run
+script_dir = os.path.dirname(os.path.realpath(__file__))
+
+# Construct the path to the data file
+fig_folder_path = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM','results', 'figures')
+data_folder_path = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM', 'data')
 
 #  ============================================ #
 # %% FIRST, FIND SUBJECTS OF INTEREST
@@ -49,27 +54,29 @@ print('number of subjects: ')
 print(len(subjects))
 
 # for now, restrict to keep manageable
-subjects = subjects[0:10]
+#subjects = subjects[0:10]
 print(subjects)
 
 #%% SECOND, FIND WHICH SESSIONS WE'D LIKE TO USE
 eids_to_use = []
 for subject in subjects:
 
+    # what was the training status at each session?
     eids, info = one.search(subject=subject, 
                             dataset=['trials.table'], 
                             details=True)
     df_info = pd.DataFrame(info).sort_values(by=['lab', 'subject', 'date', 'number'])
     df_info['date'] = pd.to_datetime(df_info['date'], utc = True)
+    df_info['eid'] = eids
 
-    # what was the training status at each session?
-    training_status = one.load_aggregate('subjects', subject, 
-                                         '_ibl_subjectTraining.table').reset_index()
+
+    try: training_status = one.load_aggregate('subjects', subject, 
+                                        '_ibl_subjectTraining.table').reset_index()
+    except: print('skipping %s, could not load subjectTraining.table'%subject); continue
     training_status['date'] = [datetime.strptime(d, '%Y-%m-%d') for d in training_status['date']]
     training_status['date'] = pd.to_datetime(training_status['date'], utc = True)
 
-    # Join to sessions table table - some wrangling needed to match on datess
-    #df_info['date2'] = df_info['date']
+    # Join to sessions table table - some wrangling needed to match on dates
     df_info = df_info.set_index('date').join(training_status.set_index('date'))
     df_info['training_status'] = df_info.training_status.fillna(method='ffill')
     df_info = df_info.reset_index()
@@ -78,47 +85,36 @@ for subject in subjects:
     if whichTask == 'trainingChoiceWorld':
 
         # find the sessions where the animal was trained_1a OR trained_1b
-        first_day_trained = df_info[('trained' in df_info['training_status'])]
-
+        try: first_day_trained = df_info[df_info['training_status'].str.contains("trained")].index[0]
+        except: print('skipping %s, could not identify first day trained'%subject); continue
         # now find the 3 days before this
-        # find the 3 sessions before n_sessions (when trained_1a was reached)
-        cache_sj = cache_df[cache_df['subject'] == subject].reset_index()
-        three_sessions_before_trained1a = cache_sj.iloc[n_sessions-3:n_sessions, :]
+        three_sessions_before_trained = df_info.iloc[first_day_trained-3:first_day_trained]
 
         # assert that all of these have the task protocol including trainingchoiceworld
-        if not (all(three_sessions_before_trained1a['task_protocol'].str.contains('trainingChoiceWorld'))): \
-            print('not all sessions have trainingChoiceWorld for %s'%subject); \
-                print(three_sessions_before_trained1a); continue
+        assert (all(three_sessions_before_trained['task_protocol'].str.contains('trainingChoiceWorld')))
 
         # assert that this returns 3 sessions per mouse
-        if not (len(three_sessions_before_trained1a)) == 3: print('not 3 sessions for %s'%subject); continue
+        try: assert (len(three_sessions_before_trained)) == 3
+        except: print('skipping %s, did not find 3 sessions before trained'%subject); continue 
 
-        # also double check that for each of those sessions, trials can be loaded
+        # assert that we have good enough behavior
         add_to_list = True
-        for eid_to_check in three_sessions_before_trained1a['id'].tolist():
-            try: trials_obj = one.load_object(eid_to_check, 'trials')
-            except: add_to_list = False; print('could not load trials for %s'%subject); continue
-        if not add_to_list: continue
-        
-        
-        # take the last 3 sessions of this animal for now - later, improve
-    three_sessions_before_trained1a = eids[-3:]
-    assert len(three_sessions_before_trained1a) == 3
-
-    # training_status = training.get_subject_training_status(subject, one=one)
-
-    # # from this, find the 3 sessions we'd like
-    # whichsessions = 'trainingCW'
-    # if whichsessions == 'trainingCW':
-    #     use_sessions = 'trained_1a'
-    # elif whichsessions == 'ephys':
-    #     use_sessions = 'ephys'
-
-
-
+        for eid_to_check in three_sessions_before_trained['eid'].tolist():
+            trials_obj = one.load_object(eid_to_check, 'trials')
+            performance_easy = training.compute_performance_easy(trials_obj)
+            try: assert performance_easy > 0.9
+            except: add_to_list = False; print('skipping %s, performance too low'%subject); continue
+    
     #print('adding sessions for %s'%subject)
-    for eid in three_sessions_before_trained1a:
-        eids_to_use.append(eid) # append
+    if add_to_list:
+        print('adding %s to df'%subject)
+        for eid in three_sessions_before_trained['eid']:
+            eids_to_use.append(eid) # append
+
+print('# sessions included:')
+print(len(np.unique(eids_to_use)))
+print('# subjects included:')
+print(len(np.unique(eids_to_use)) / 3)
 
 # %% THIRD, GET TRIALS TABLE FOR ALL OF THESE
 behav = [] # all behavior for all animals
@@ -135,14 +131,14 @@ for eid in tqdm(eids_to_use): # dont use all for now...
     # additionally, save the movement onset
     trials_obj['movement_onset'] = trials_obj['firstMovement_times'] - trials_obj['goCue_times']
 
-    # for trainingChoiceWorld, the probabilityLeft is always 0.5
-    if whichTask == 'trainingChoiceWorld':
-        trials_obj['probabilityLeft'] = 0.5
-
     trials = trials_obj.to_df() # to dataframe
     trials['trialnum'] = trials.index # to keep track of choice history
     trials['response'] = trials['choice'].map({1: 0, 0: np.nan, -1: 1})
     trials['correct']  = trials['feedbackType']
+    trials['prior_bias'] = trials['probabilityLeft']
+    # for trainingChoiceWorld, the probabilityLeft is always 0.5
+    if whichTask == 'trainingChoiceWorld':
+        trials['prior_bias'] = 0.5
 
     # retrieve the mouse name, session etc
     ref_dict = one.eid2ref(eid)
@@ -153,7 +149,7 @@ for eid in tqdm(eids_to_use): # dont use all for now...
 
 # continue only with some columns we need
 data = pd.concat(behav)
-data = data[['eid', 'subj_idx', 'date', 'signed_contrast', 
+data = data[['eid', 'subj_idx', 'date', 'signed_contrast', 'prior_bias',
          'response', 'rt', 'movement_onset', 'correct', 'trialnum']]
 
 # %% FOURTH, CLEAN AND PREPROCESS THE DATA
@@ -171,5 +167,7 @@ data = more_tools.compute_choice_history(data)
 data['repeat'] = np.where(data.response == data.prevresp, 1, 0)
 
 # save to csv   
-data.to_csv(os.path.join(datapath, 'ibl_%s_clean.csv'%whichTask), 
+data.to_csv(os.path.join(data_folder_path, 'ibl_%s_clean.csv'%whichTask), 
             index=False)
+print('saved file to:')
+print(os.path.join(data_folder_path, 'ibl_%s_clean.csv'%whichTask))
