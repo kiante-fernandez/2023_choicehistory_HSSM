@@ -28,8 +28,6 @@ data = pd.read_csv(data_file_path)
 # REGULAR PSYCHFUNCS
 # ================================= #
 
-#data['signed_contrast'] = data['coherence'] * data['stimulus']
-
 fig = sns.FacetGrid(data, hue="subj_idx")
 fig.map(tools.plot_psychometric, "signed_contrast", "response",
         "subj_idx", color='lightgrey', alpha=0.3)
@@ -37,14 +35,11 @@ fig.map(tools.plot_psychometric, "signed_contrast", "response",
 for axidx, ax in enumerate(fig.axes.flat):
     tools.plot_psychometric(data.signed_contrast, data.response,
                       data.subj_idx, ax=ax, legend=False, color='darkblue', linewidth=2)
-
-#fig.map(sns.lineplot, "signed_contrast", "response", color='gray', alpha=0.7)     
 fig.despine(trim=True)
 fig.set_axis_labels('Signed contrast (%)', 'Rightward choice (%)')
 ax.set_title('a. Psychometric function (n = %d)'%data.subj_idx.nunique())
 
 fig.savefig(os.path.join(fig_file_path, "%s_psychfuncs.png"%dataset), dpi=300)
-# fig.savefig(os.path.join(fig_file_path, "psychfuncs_allmice.pdf"))
 
 # %% ================================= #
 # CHRONFUNCS on good RTs
@@ -60,7 +55,6 @@ fig.despine(trim=True)
 fig.set_axis_labels('Signed contrast (%)', 'RT (s)')
 ax.set_title('b. Chronometric function (n = %d)'%data.subj_idx.nunique())
 fig.savefig(os.path.join(fig_file_path, "%s_chronfuncs.png"%dataset), dpi=300)
-# fig.savefig(os.path.join(fig_file_path, "chronfuncs_allmice.pdf"))
 
 # and RT distributions
 fig = sns.FacetGrid(data, hue="subj_idx")
@@ -89,7 +83,6 @@ data['rt_raw_category'] = pd.cut(data['rt_raw'],
 
 # squash for easier plotting - to show all slow trials as 1 bin 
 data.loc[data.rt_raw > rt_cutoff[1], 'rt_raw'] = rt_cutoff[1] 
-
 # use FacetGrid to ensure the same figure size (approximately)
 fig = sns.FacetGrid(data)
 for axidx, ax in enumerate(fig.axes.flat):
@@ -99,14 +92,12 @@ for axidx, ax in enumerate(fig.axes.flat):
                 yticklabels=[],
                 title='RT exclusion')
 sns.despine(trim=True)
-
 # annotate: how many trials are below the lower cutoff, and how many are above the higher cutoff?
 percent_below = (data.rt_raw < rt_cutoff[0]).mean() * 100
 percent_above = (data.rt_raw >= rt_cutoff[1]).mean() * 100
 plt.annotate('%d%%'%percent_below, xy=(rt_cutoff[0]/2, 2000), ha='center', fontsize=7)
 plt.annotate('%d%%'%percent_above, xy=(rt_cutoff[1]-0.1, 3000), ha='center', fontsize=7)
 fig.savefig(os.path.join(fig_file_path, "%s_rtdist_cleaned.png"%dataset), dpi=300)
-
 
 # %% ================================= #
 # USE THE SAME FILE AS FOR HDDM FITS
@@ -134,7 +125,6 @@ fig.savefig(os.path.join(fig_file_path, "%s_psychfuncs_history.png"%dataset), dp
 plt.close('all')
 
 #%% also previous history chronometric 
-# plot one curve for each animal, one panel per lab
 fig = sns.FacetGrid(data, hue='previous_trial', palette=cmap, hue_order=hue_order)
 fig.map(tools.plot_chronometric, "signed_contrast", "rt", "subj_idx")
 fig.set_axis_labels('Signed contrast (%)', 'RT (s)')
