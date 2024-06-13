@@ -21,6 +21,9 @@ def compute_choice_history(trials):
     for col in ['prevresp', 'prevfb', 'prevcontrast']:
         trials.loc[trials_not_consecutive, col] = np.nan
 
+    # add some more history measures
+    trials['repeat'] = np.where(trials.response == trials.prevresp, 1, 0)
+
     return trials
 
 def clean_rts(rt, cutoff=[0.08, 2],
