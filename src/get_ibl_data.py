@@ -164,9 +164,9 @@ print(len(np.unique(data.subj_idx)))
 data = more_tools.compute_choice_history(data)
 
 # save to csv   
-data.to_csv(os.path.join(data_folder_path, 'ibl_%s_clean.csv'%whichTask), 
+data.to_csv(os.path.join(data_folder_path, 'ibl_%s.csv'%whichTask), 
             index=False)
 print('saved file to:')
-print(os.path.join(data_folder_path, 'ibl_%s_clean.csv'%whichTask))
+print(os.path.join(data_folder_path, 'ibl_%s.csv'%whichTask))
 
 # %%
