@@ -105,7 +105,7 @@ def plot_psychometric(x, y, subj, **kwargs):
 
     # only 'break' the x-axis and remove 50% contrast when 0% is present
     # print(df2.signed_contrast.unique())
-    if 0. in df2.signed_contrast.values:
+    if 0. in df2.signed_contrast.values and 100. in df2.signed_contrast.values:
         brokenXaxis = True
     else:
         brokenXaxis = False
@@ -185,7 +185,7 @@ def plot_chronometric(x, y, subj, **kwargs):
 
     # only 'break' the x-axis and remove 50% contrast when 0% is present
     # print(df2.signed_contrast.unique())
-    if 0. in df2.signed_contrast.values:
+    if 0. in df2.signed_contrast.values and 100. in df2.signed_contrast.values:
         brokenXaxis = True
 
         df2['signed_contrast'] = df2['signed_contrast'].replace(-100, -35)
