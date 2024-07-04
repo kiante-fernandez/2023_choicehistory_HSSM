@@ -114,6 +114,8 @@ for subject in tqdm(subjects):
         trials['subj_idx'] = subject
         trials['eid'] = trials.index
 
+        # TODO: Add is_final_movement to trial selection: https://int-brain-lab.github.io/iblenv/notebooks_external/docs_wheel_moves.html#Finding-reaction-time-and-'determined'-movements
+
         # assert that we have good enough behavior in each session
         trials['contrast_level'] = trials['abs_contrast'] >= 50
         perf = trials.groupby(['session_start_time', 'contrast_level'])['correct'].mean().reset_index()
