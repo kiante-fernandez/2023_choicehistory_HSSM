@@ -18,7 +18,7 @@ script_dir = os.path.dirname(os.path.realpath(__file__))
 
 # Construct the path to the data file
 dataset = 'ibl_trainingChoiceWorld'
-# dataset = 'visual_motion_2afc_fd'
+dataset = 'visual_motion_2afc_fd'
 
 fig_file_path = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM','results', 'figures')
 data_file_path = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM', 'data', dataset + '.csv')
@@ -114,6 +114,7 @@ fig.savefig(os.path.join(fig_file_path, "%s_rtdist_cleaned.png"%dataset), dpi=30
 data.head(n=10)
 if not 'prevfb' in data.columns:
       data['prevfb'] = (data.prevresp == data.prevstim)
+      data['prevresp'] = data['prevresp'].map({-1: 0, 1: 1})
 data['previous_trial'] = 100*data.prevfb + 10*data.prevresp  # for color coding
 print(data.groupby(['previous_trial'])[['prevfb', 'prevresp']].mean().reset_index())
 cmap = sns.color_palette("Paired")
@@ -127,9 +128,9 @@ hue_order = [0., +100.,  +10., +110.]
 # plot one curve for each animal, one panel per lab
 fig = sns.FacetGrid(data, hue='previous_trial', palette=cmap, hue_order=hue_order)
 fig.map(tools.plot_psychometric, "signed_contrast", "response", "subj_idx")
-fig.set_axis_labels('Signed contrast (%)', 'Rightward choice (%)')
+fig.set_axis_labels('Signed evidence (%)', 'Rightwards choice (%)')
 for axidx, ax in enumerate(fig.axes.flat):
-        ax.set_title('c. History-dependent psychometric')
+        ax.set_title('History bias')
 fig.despine(trim=True)
 fig.savefig(os.path.join(fig_file_path, "%s_psychfuncs_history.png"%dataset), dpi=300)
 plt.close('all')
@@ -139,7 +140,7 @@ fig = sns.FacetGrid(data, hue='previous_trial', palette=cmap, hue_order=hue_orde
 fig.map(tools.plot_chronometric, "signed_contrast", "rt", "subj_idx")
 fig.set_axis_labels('Signed contrast (%)', 'RT (s)')
 for axidx, ax in enumerate(fig.axes.flat):
-        ax.set_title('d. History-dependent chronometric')
+        ax.set_title('History-dependent chronometric')
         # ax.set_ylim([0, 3])
 fig.despine(trim=True)
 fig.savefig(os.path.join(fig_file_path, "%s_chronfuncs_history.png"%dataset), dpi=300)
