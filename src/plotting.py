@@ -22,7 +22,6 @@ hssm.set_floatX("float32")
 
 from utils_hssm_modelspec import make_model # specifically for hssm models
 from utils_hssm import run_model, dic, aggregate_model_comparisons, reattach,filter_group_level_params
-
 # %% load data
 #dir_path = os.path.dirname(os.path.realpath(__file__)) #gets the current path
 
@@ -51,7 +50,7 @@ elife_data['response'] = elife_data['response'].replace({0: -1, 1: 1})
 elife_data['stimrepeat'] = np.where(elife_data.stimulus == elife_data.prevstim, 1, 0)
 elife_data['repeat'] = np.where(elife_data.response == elife_data.prevresp, 1, 0)
 def get_prep(data):
-     # grouped_data = data.groupby(['subj_idx'])['stimrepeat','repeat'].apply(lambda x: x.value_counts(normalize=True))
+    # grouped_data = data.groupby(['subj_idx'])['stimrepeat','repeat'].apply(lambda x: x.value_counts(normalize=True))
     grouped_data = data.groupby(['subj_idx'])[['stimrepeat','repeat']].mean().reset_index()
     return grouped_data
 
@@ -87,7 +86,7 @@ for file_name in os.listdir(directory):
 
         # Prepare for loading the csv result file
         model_value = model_mapping.get(model_name, model_name)
-        results_file_path = os.path.join(directory, f"{model_value}_results_excluded_{'_'.join(map(str, excluded_participants))}.csv")
+        results_file_path = os.path.join(directory, f"{model_value}_test_results_combined.csv")
 
         # Read the CSV file
         results = pd.read_csv(results_file_path)
@@ -99,7 +98,8 @@ for file_name in os.listdir(directory):
         # Creates the regular expression pattern to extract subject predictions
         pattern_v = r'v_{}\|participant_id_offset\[\d+\]'.format(model_type[0]) 
         pattern_z = r'z_{}\|participant_id_offset\[\d+\]'.format(model_type[0])
-
+        pal = sns.color_palette("Paired")
+        pal2 = pal[2:4] + pal[0:2] + pal[8:10]
         # 'v' model_type part
         subj_idx_specific_rows_v = results[results['index'].str.contains(pattern_v, na=False, regex=True)]
         subj_idx_df_v = subj_idx_specific_rows_v[['index', 'mean']]
@@ -121,14 +121,14 @@ for file_name in os.listdir(directory):
         #merged_df_z.rename(columns={'repeat': 'repetition'}, inplace=True)
 
         # Plotting
-        fig, ax = plt.subplots(ncols=2, nrows=1, sharey=True, sharex=False, figsize=(12, 6))
+        fig, ax = plt.subplots(ncols=2, nrows=1, sharey=True, sharex=False, figsize=(6,3))
 
         # 'v' model_type subplot
-        corrfunc(x=merged_df_z.z_mean, y=merged_df_z.repeat, ax=ax[0], color='blue')
+        corrfunc(x=merged_df_z.z_mean, y=merged_df_z.repeat, ax=ax[0], color=pal2[1])
         ax[0].set(xlabel='History shift in z', ylabel='P(repeat)')
 
         # 'z' model_type subplot
-        corrfunc(x=merged_df_v.v_mean, y=merged_df_v.repeat, ax=ax[1], color='green')
+        corrfunc(x=merged_df_v.v_mean, y=merged_df_v.repeat, ax=ax[1], color=pal2[3])
         ax[1].set(xlabel='History shift in drift bias', ylabel='P(repeat)')
 
         # Performing Steiger's test
