@@ -18,8 +18,8 @@ tools.seaborn_style()
 script_dir = os.path.dirname(os.path.realpath(__file__))
 
 # Construct the path to the data file
-dataset = 'ibl_trainingChoiceWorld_clean'
-#dataset = 'visual_motion_2afc_fd'
+dataset = 'ibl_trainingChoiceWorld_20240715'
+# dataset = 'visual_motion_2afc_fd'
 
 # Construct the path to the data file
 fig_folder_path = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM','results', 'figures')

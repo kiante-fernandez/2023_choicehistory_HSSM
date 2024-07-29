@@ -14,10 +14,10 @@ import numpy as np
 import pandas as pd
 import glob
 import seaborn as sns
+import pymc as pm
 import matplotlib.pyplot as plt
 from hssm import set_floatX
-#import hssm 
-
+import hssm 
 #%matplotlib inline
 set_floatX("float32")
 #%% load data
@@ -31,6 +31,9 @@ elife_data['signed_contrast'] = elife_data['coherence'] * elife_data['stimulus']
 elife_data['response'] = elife_data['response'].replace({0: -1, 1: 1})
 elife_data['rt'] = elife_data['rt'].round(5)
 elife_data['participant_id'] = elife_data['subj_idx']
+
+excluded_participants = [11, 19, 20, 22, 26, 27, 28] 
+elife_data = elife_data[~elife_data['participant_id'].isin(excluded_participants)]
 #%% single subject parameter estimation
 participants = elife_data['participant_id'].unique()
 
@@ -42,11 +45,13 @@ for participant in participants:
     # Subset data for the current participant
     subj_dataset = elife_data[elife_data['participant_id'] == participant]
 
-    # Define model
+    # Define model. #TODO try the laspe below as estimated. see if that helps
     sub_hssm_model = hssm.HSSM(data=subj_dataset,
-                               model="ddm",
+                            model="ddm",
+                            p_outlier={"name": "Uniform", "lower": 0.0001, "upper": 0.50},
+                            lapse=hssm.Prior("Uniform", lower=0.0, upper=20.0),
                             #    model="full_ddm",
-                               include=[
+                            include=[
         {
             "name": "v",
             "formula":"v ~ 1 + signed_contrast + prevresp"
@@ -59,16 +64,17 @@ for participant in participants:
                                 # loglik_kind="blackbox",
                                 # sv = 0, sz = 0, st = 0)      
                                 # loglik_kind="analytical")
+                                
                                loglik_kind="approx_differentiable")
 
     # Estimate model
     subj_sample_res = sub_hssm_model.sample(
-        sampler="nuts_numpyro",
-        # sampler="mcmc",
+        # sampler="nuts_numpyro",
+        sampler="mcmc",
         cores=4,
         chains=4,
-        draws=1000,
-        tune=1000,
+        draws=3000,
+        tune=3000,
         # step = pm.Slice(model=sub_hssm_model.pymc_model)
     )
     # Create summary and store it in the dictionary
@@ -76,14 +82,16 @@ for participant in participants:
 
  #save results
 for participants, dataframe in summaries.items():
-    # filename = f'HSSM_M4_fit_{participants}_MCMC.csv'
-    #filename = f'HSSM_M4_fit_{participants}_nuts_numpyro_approx_differentiable.csv'
-    # filename = f'HSSM_M4_fit_{participants}_MCMC_analytical.csv'
+    filename = f'HSSM_M4_fit_{participants}_MCMC.csv'
+    # filename = f'HSSM_M4_fit_{participants}_nuts_numpyro_approx_differentiable.csv'
+#    filename = f'HSSM_M4_fit_{participants}_MCMC_analytical.csv'
     # filename = f'HSSM_M4_fit_{participants}_MCMC_SLICE.csv'
 
     dataframe.to_csv(filename, index=True)
     print(f'Saved data for participant {participants} as {filename}')
 
+
+#exit()
 # %% after parameter estimation, load files above
 def load_files(base_path):
     dataframes_mcmc = {}
@@ -167,31 +175,90 @@ palette = sns.color_palette("viridis", as_cmap=False)
 # Adjust overall aesthetics for publication quality
 sns.set(style='ticks', context='talk', palette=palette)
 
-# Plotting Average r_hat for each sampler by parameter
+# Group the data by 'sampler' and calculate the mean and standard error
+average_r_hat_samplers = average_r_hat.groupby('sampler').agg({
+    'r_hat': ['mean', 'sem']
+}).reset_index()
+average_r_hat_samplers.columns = ['sampler', 'mean', 'sem']
+
+average_estimate_samplers = average_estimate.groupby('sampler').agg({
+    'mean': ['mean', 'sem']
+}).reset_index()
+average_estimate_samplers.columns = ['sampler', 'mean', 'sem']
+
+# Replace sampler names
+sampler_names = {
+    'slice': 'Analytical Likelihood,\nSlice Sampler',
+    'nuts_analytical': 'Analytical Likelihood,\nNUTS Sampler',
+    'nuts': 'Approximate Likelihood,\nNUTS Sampler',
+    'numpyro_approx_differentiable': 'Approximate Likelihood,\nNUTS (NumPyro) Sampler'
+}
+
+average_r_hat_samplers['sampler'] = average_r_hat_samplers['sampler'].replace(sampler_names)
+average_estimate_samplers['sampler'] = average_estimate_samplers['sampler'].replace(sampler_names)
+
+# Plotting Average r_hat for each sampler with error bars
 plt.figure(figsize=(10, 6))
-ax = sns.barplot(x='parameter', y='r_hat', hue='sampler', data=average_r_hat, palette=palette)
-plt.title('Average $\\hat{R}$ by Parameter and Sampler')
-plt.xticks(rotation=45)
-plt.xlabel('Parameter')
-plt.ylabel('Average $\\hat{R}$')
-plt.legend(title='Sampler')
-sns.despine()  # Remove the top and right spines
+
+plt.axvline(x=1.0, color='grey', linestyle='--', zorder=0)
+
+ax = sns.barplot(x='mean', y='sampler', data=average_r_hat_samplers, linewidth=0.5, palette="viridis")
+
+# Add error bars
+ax.errorbar(x=average_r_hat_samplers['mean'], y=average_r_hat_samplers['sampler'], 
+            xerr=average_r_hat_samplers['sem'], fmt='none', color='black', capsize=5)
+
+plt.title('Average $\\hat{R}$ by Sampler')
+plt.xlabel('Average $\\hat{R}$')
+plt.ylabel('Sampler')
+
+# Swap the x and y axes and flip the y-axis
+ax.invert_yaxis()
+sns.despine() # Remove the top and right spines
 plt.tight_layout()
-plt.savefig(os.path.join(results_dir, 'Average_R_hat_by_Parameter_and_Sampler.png'))
+plt.savefig(os.path.join(results_dir, 'Average_R_hat_by_Sampler.png'))
 plt.show()
 
-# Plotting Mean estimate for each sampler by parameter
-plt.figure(figsize=(10, 6))
-ax = sns.barplot(x='parameter', y='mean', hue='sampler', data=average_estimate, palette=palette)
-plt.title('Mean Estimates by Parameter and Sampler')
-plt.xticks(rotation=45)
-plt.xlabel('Parameter')
-plt.ylabel('Estimate')
-plt.legend(title='Sampler')
-sns.despine()  # Remove the top and right spines
-plt.tight_layout()
-plt.savefig(os.path.join(results_dir, 'Mean_Estimates_by_Parameter_and_Sampler.png'))
-plt.show()
+# # Plotting Mean estimate for each sampler
+# plt.figure(figsize=(10, 6))
+# ax = sns.barplot(x='mean', y='sampler', data=average_estimate_samplers, linewidth=0.5, palette="viridis")
+# plt.title('Mean Estimates by Sampler')
+# plt.xlabel('Estimate')
+# plt.ylabel('Sampler')
+
+# # Swap the x and y axes and flip the y-axis
+# ax.invert_yaxis()
+
+# sns.despine() # Remove the top and right spines
+# plt.tight_layout()
+# plt.savefig(os.path.join(results_dir, 'Mean_Estimates_by_Sampler.png'))
+# plt.show()
+
+# # Plotting Average r_hat for each sampler by parameter
+# plt.figure(figsize=(10, 6))
+# ax = sns.barplot(x='parameter', y='r_hat', hue='sampler', data=average_r_hat, palette=palette)
+# plt.title('Average $\\hat{R}$ by Parameter and Sampler')
+# plt.xticks(rotation=45)
+# plt.xlabel('Parameter')
+# plt.ylabel('Average $\\hat{R}$')
+# plt.legend(title='Sampler')
+# sns.despine()  # Remove the top and right spines
+# plt.tight_layout()
+# plt.savefig(os.path.join(results_dir, 'Average_R_hat_by_Parameter_and_Sampler.png'))
+# plt.show()
+
+# # Plotting Mean estimate for each sampler by parameter
+# plt.figure(figsize=(10, 6))
+# ax = sns.barplot(x='parameter', y='mean', hue='sampler', data=average_estimate, palette=palette)
+# plt.title('Mean Estimates by Parameter and Sampler')
+# plt.xticks(rotation=45)
+# plt.xlabel('Parameter')
+# plt.ylabel('Estimate')
+# plt.legend(title='Sampler')
+# sns.despine()  # Remove the top and right spines
+# plt.tight_layout()
+# plt.savefig(os.path.join(results_dir, 'Mean_Estimates_by_Parameter_and_Sampler.png'))
+# plt.show()
 
 # %% Identity plots 
 pivot_data = filtered_data.pivot_table(index=['participant_id', 'parameter'], columns='sampler', values='mean').reset_index()
@@ -262,18 +329,27 @@ plt.savefig(os.path.join(results_dir, 'New_vs_Old_Slice.png'))
 plt.show()
 
 # Third FacetGrid: Comparing 'nuts_analytical' and 'old_slice'
+def custom_title(param):
+    param_map = {
+        'a': r'$a$',
+        't': r'$t$',
+        'v_Intercept': r'$v_{\mathrm{intercept}}$',
+        'v_prevresp': r'$v_{\mathrm{previous\ response}}$',
+        'v_signed_contrast': r'$v_{\mathrm{signed\ contrast}}$',
+        'z_Intercept': r'$z_{\mathrm{intercept}}$',
+        'z_prevresp': r'$z_{\mathrm{previous\ response}}$'
+    }
+    return param_map.get(param, param)
+
 g = sns.FacetGrid(combined_df, col='parameter', col_wrap=4, height=4, sharex=False, sharey=False, hue='parameter', palette=palette_set2)
-g.map_dataframe(sns.scatterplot, x='nuts_analytical', y='old_slice')
+g.map_dataframe(sns.scatterplot, x='old_slice', y='nuts_analytical')
 
-# for ax, (_, subdata) in zip(g.axes.flat, combined_df.groupby('parameter')):
-#     min_val = min(subdata['nuts_analytical'].min(), subdata['old_slice'].min())
-#     max_val = max(subdata['nuts_analytical'].max(), subdata['old_slice'].max())
-#     ax.plot([min_val, max_val], [min_val, max_val], 'gray', ls="--")
-#     ax.set_xlim(min_val, max_val)
-#     ax.set_ylim(min_val, max_val)
+# Use a custom title function
+for ax, title in zip(g.axes.flat, g.col_names):
+    ax.set_title(custom_title(title))
 
-g.set_axis_labels('Nuts Analytical Mean Estimate', 'Old Slice Mean Estimate')
-g.set_titles(col_template="{col_name}")
+g.set_axis_labels('Previous Analytical Likelihood,\nSlice Sampler', 'Current Analytical Likelihood,\nNUTS Sampler')
 plt.savefig(os.path.join(results_dir, 'Nuts_Analytical_vs_Old_Slice.png'))
 plt.show()
+
 # %%
