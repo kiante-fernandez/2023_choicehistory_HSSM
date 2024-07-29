@@ -64,16 +64,104 @@ participants = elife_data['participant_id'].unique()
 # subsample = elife_data[elife_data['participant_id'].isin(selected_participants)]
 # subsample = subsample[['rt','response','signed_contrast','prevresp','participant_id','subj_idx']]
 
+mouse_data = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM', 'data', 'ibl_trainingChoiceWorld_20240715.csv')
+mouse_data = pd.read_csv(mouse_data)
+mouse_data['response'] = mouse_data['response'].replace({0: -1, 1: 1})
+mouse_data['rt'] = mouse_data['rt'].round(6)
+mouse_data['participant_id'] = pd.factorize(mouse_data['subj_idx'])[0]
+mouse_data['participant_id'] = mouse_data['participant_id'] + 1
+nan_rt_count = mouse_data['rt'].isna().sum()
+print(f"Number of NaN rt values: {nan_rt_count}")
+negative_rt_count = (mouse_data['rt'] < 0).sum()
+print(f"Number of negative rt values: {negative_rt_count}")
+#remove the NA cols and negatives
+mouse_data = mouse_data.dropna(subset=['rt'])
+mouse_data = mouse_data[mouse_data['rt'] >= 0]
+mouse_data = mouse_data.dropna(subset=['response'])
+mouse_data = mouse_data.dropna(subset=['prevresp'])
+
+# Define the number of subjects you want to sample
+# num_subjects = 3
+# Group the data by subject, sample the desired number of subjects, and get all rows for these subjects
+# subsample = mouse_data[mouse_data['participant_id'].isin(mouse_data.groupby('participant_id').size().sample(num_subjects).index)]
 # %% create subset of data and objects for pymc
-dataset = elife_data 
-excluded_participants = [11, 19, 20, 22, 26, 27, 28] #we want diff combos
-dataset = dataset[~dataset['participant_id'].isin(excluded_participants)]
-# dataset = mouse_data 
+# dataset = elife_data 
+# excluded_participants = [11, 19, 20, 22, 26, 27, 28] #we want diff combos
+# dataset = dataset[~dataset['participant_id'].isin(excluded_participants)]
+
+dataset = mouse_data 
+
+# excluded_participants = [5, 7, 9, 10, 14,16, 23, 38, 41, 45]
+# dataset = dataset[~dataset['participant_id'].isin(excluded_participants)]
 
 n_subjects = len(dataset['participant_id'].unique())
 participant_id, unique_participants = pd.factorize(dataset['subj_idx'])
 signed_contrast = dataset['signed_contrast'].values
 prevresp = dataset['prevresp'].values
+
+#%% check individual subjects
+import hssm
+import os
+import bambi as bmb
+
+def ensure_dir(directory):
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    
+output_folder = "subject_plots"
+ensure_dir(output_folder)
+
+unique_subjects = dataset['participant_id'].unique()
+
+# Loop through each subject
+for subject_id in unique_subjects:
+    print(f"Processing subject {subject_id}")
+    
+    # Filter data for the current subject
+    subject_data = dataset[dataset['participant_id'] == subject_id]
+    
+    # Create a new model instance for the current subject
+    subject_model = hssm.HSSM(
+        data=subject_data,
+        p_outlier={"name": "Uniform", "lower": 0.0001, "upper": 0.50},
+        lapse=bmb.Prior("Uniform", lower=0.0, upper=30.0),
+        include=[
+        {
+            "name": "v",
+            "formula":"v ~ 1 + signed_contrast + prevresp"
+        },
+        {
+            "name": "z",
+            "formula":"z ~ 1 + prevresp",
+        }
+    ]
+    )
+    subject_model.sample(
+        step = pm.NUTS(
+            model=subject_model.pymc_model,
+            target_accept=0.96,
+            max_treedepth=12,
+            adapt_step_size=True),
+        cores=4,
+        chains=4,
+        draws=6000,
+        tune=6000,
+        idata_kwargs=dict(log_likelihood=False)
+    )
+    results =  subject_model.summary().reset_index()
+    sub_res_filename = os.path.join(output_folder, f"res_subject_{subject_id}_samples_summary.csv")
+    results.to_csv(sub_res_filename)
+    # Create and save the trace plot
+    plt.figure(figsize=(12, 8))
+    subject_model.plot_trace()
+    plt.tight_layout()
+    
+    # Save the plot
+    plot_filename = os.path.join(output_folder, f"subject_{subject_id}_trace_plot.png")
+    plt.savefig(plot_filename)
+    plt.close()  # Close the plot to free up memory
+
+    print(f"Saved plot for subject {subject_id}")
 
 # %% model one. no history effects
 with pm.Model() as no_hist_pymc:
@@ -110,23 +198,32 @@ with pm.Model() as no_hist_pymc:
     ddm = DDM("ddm", v=v, a=a, z=z, t=t, observed=dataset[['rt','response']].values)
 
     # Sampling
-    no_hist_pymc_trace = pm.sample(init="adapt_diag",
-                               cores=4,
-                               chains=4,
-                               draws=1000,
-                               tune=1000,
-                               discard_tuned_samples = True,
-                               idata_kwargs=dict(log_likelihood=True))
-    # no_hist_pymc_trace = pm.sample(nuts_sampler="numpyro", 
-    #                            cores=8,
-    #                            chains=8,
-    #                            draws=8000,
-    #                            tune=8000,
-    #                            idata_kwargs=dict(log_likelihood=False))
-
+    # no_hist_pymc_trace = pm.sample(init="adapt_diag",
+    #                            cores=4,
+    #                            chains=4,
+    #                            draws=1000,
+    #                            tune=1000,
+    #                            discard_tuned_samples = True,
+    #                            idata_kwargs=dict(log_likelihood=True))
+    step = pm.NUTS(
+        target_accept=0.99, #.999
+        # step_scale=0.001,
+        # max_treedepth=20,
+        adapt_step_size=True
+    )
+    no_hist_pymc_trace = pm.sample(
+        nuts_sampler="numpyro",
+        step=step,
+        cores=4,
+        chains=4,
+        draws=5000,
+        tune=5000,
+        idata_kwargs=dict(log_likelihood=False)
+    )
+    
 print("saving summary stats")
 results =  az.summary(no_hist_pymc_trace).reset_index()  # point estimate for each parameter and subject
-results.to_csv('m1_test_results_v.csv')
+results.to_csv('m1_trainingChoiceWorld_results.csv')
 # %% model 2 choice history on drift
 with pm.Model() as prevresp_v_pymc:
     sigma_intercept_v = pm.Weibull("v_1|participant_id_sigma", alpha = 1.5, beta = 0.3)
@@ -173,7 +270,7 @@ with pm.Model() as prevresp_v_pymc:
                                idata_kwargs=dict(log_likelihood=True))
     
 results =  az.summary(prevresp_v_pymc_trace).reset_index()  # point estimate for each parameter and subject
-results.to_csv('m2_test_results_combined.csv')
+results.to_csv('m2_trainingChoiceWorld_results.csv')
 # %% model 3 choice history on starting point
 with pm.Model() as prevresp_z_pymc:
     sigma_intercept_v = pm.Weibull("v_1|participant_id_sigma", alpha = 1.5, beta = 0.3)
@@ -223,7 +320,7 @@ with pm.Model() as prevresp_z_pymc:
                                idata_kwargs=dict(log_likelihood=True))
     
 results =  az.summary(prevresp_z_pymc_trace).reset_index()  # point estimate for each parameter and subject
-results.to_csv('m3_test_results_combined.csv')
+results.to_csv('m3_trainingChoiceWorld_results.csv')
 #%% model 4 choice history on drift and starting point
 with pm.Model() as prevresp_zv_pymc:
     sigma_intercept_v = pm.Weibull("v_1|participant_id_sigma", alpha = 1.5, beta = 0.3)
@@ -276,8 +373,9 @@ with pm.Model() as prevresp_zv_pymc:
                                idata_kwargs=dict(log_likelihood=True))
     
 results =  az.summary(prevresp_zv_pymc_trace).reset_index()  # point estimate for each parameter and subject
-results.to_csv('m4_test_results_combined.csv')
+results.to_csv('m4_trainingChoiceWorld_results.csv')
 prevresp_zv_pymc_trace.to_netcdf("prevresp_zv_pymc_traces.nc")
+
 # %% plot traces across each model
 az.plot_trace(no_hist_pymc_trace)
 plt.tight_layout()
