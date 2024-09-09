@@ -12,7 +12,7 @@
 
 import pandas as pd
 import hssm
-
+import bambi as bmb
 hssm.set_floatX("float32")
 
 # %% write make model function
@@ -82,12 +82,14 @@ def make_model(data, mname_full):
     }
     if mname in model_specs:
         hssm_model = hssm.HSSM(data, 
+                               p_outlier={"name": "Uniform", "lower": 0.0001, "upper": 0.50},
+                               lapse=bmb.Prior("Uniform", lower=0.0, upper=30.0),
                                model=base_model,
                                loglik_kind=spec_loglik_kind, #note so we can use ddm, angle, and weibull 
                                include=model_specs[mname],
-                               prior_settings= "safe",
-                               hierarchical=True,
-                               link_settings = "log_logit")
+                            #    prior_settings= "safe",
+                               hierarchical=True)
+                            #    link_settings = "log_logit")
     else:
         raise ValueError('Model name not recognized!')
 

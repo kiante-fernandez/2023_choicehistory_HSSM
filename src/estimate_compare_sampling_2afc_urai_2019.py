@@ -63,14 +63,13 @@ for participant in participants:
     ],                          #change depends on which comparison (could create larger loop for each)
                                 # loglik_kind="blackbox",
                                 # sv = 0, sz = 0, st = 0)      
-                                # loglik_kind="analytical")
-                                
+                                # loglik_kind="analytical")        
                                loglik_kind="approx_differentiable")
 
     # Estimate model
     subj_sample_res = sub_hssm_model.sample(
-        # sampler="nuts_numpyro",
-        sampler="mcmc",
+        sampler="nuts_numpyro",
+        # sampler="mcmc",
         cores=4,
         chains=4,
         draws=3000,

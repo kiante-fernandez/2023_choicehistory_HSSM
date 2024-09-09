@@ -12,6 +12,7 @@ Anne Urai, Leiden University, 2023
 import pandas as pd
 import numpy as np
 import os
+from datetime import datetime
 import re 
 from tqdm import tqdm
 import utils_choice_history as more_tools
@@ -163,21 +164,12 @@ print(len(np.unique(data.subj_idx)))
 # add choice history information
 data = more_tools.compute_choice_history(data)
 
-# save to csv   
-data.to_csv(os.path.join(data_folder_path, 'ibl_%s.csv'%whichTask), 
-            index=False)
-print('saved file to:')
-print(os.path.join(data_folder_path, 'ibl_%s.csv'%whichTask))
+# Get current date for filename
+current_date = datetime.now().strftime("%Y%m%d")
 
-# %% FOURTH, CLEAN AND PREPROCESS THE DATA
-# remove RTs that sit outside the cutoff window
-data['rt_raw'] = data['rt'].copy()
-data['rt'] = more_tools.clean_rts(data['rt'], cutoff=[0.08, 3], compare_with=None)
-
-# save to clean CSV
-data.to_csv(os.path.join(data_folder_path, 'ibl_%s_clean.csv'%whichTask), 
-            index=False)
-print('saved file to:')
-print(os.path.join(data_folder_path, 'ibl_%s_clean.csv'%whichTask))
-
+# save to csv
+output_file = os.path.join(data_folder_path, f'ibl_{whichTask}_{current_date}.csv')
+data.to_csv(output_file, index=False)
+print('Saved file to:')
+print(output_file)
 # %%
