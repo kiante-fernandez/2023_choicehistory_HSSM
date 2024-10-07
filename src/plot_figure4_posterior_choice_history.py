@@ -101,7 +101,7 @@ def process_model(model, prep, dataset_name, model_name):
         elif plot_type == 'forest':
             az.plot_forest(model.traces, var_names=["~participant_id_offset"], filter_vars="like")
         elif plot_type == 'pair':
-            az.plot_pair(model.traces, var_names=["~participant_id_offset"], filter_vars="like", kind="kde")
+            az.plot_pair(model.traces, var_names=["~participant_id_offset"], filter_vars="like", kind="kde", marginals=True)
         
         plt.tight_layout()
         plt.savefig(plot_file_path, dpi=300)
@@ -110,8 +110,7 @@ def process_model(model, prep, dataset_name, model_name):
     # Posterior Predictive Check
     plot_file_name = f"{dataset_name}_{model_name}_posterior_predictive_check.png"
     plot_file_path = os.path.join(PLOT_DIRECTORY, plot_file_name)
-    # model.sample_posterior_predictive()
-    hssm.plotting.plot_posterior_predictive(model, col="participant_id", col_wrap=4)
+    hssm.plotting.plot_posterior_predictive(model, col="participant_id", col_wrap=4, range=(-3,3))
     plt.tight_layout()
     plt.savefig(plot_file_path, dpi=300)
     plt.close()
