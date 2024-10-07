@@ -13,6 +13,7 @@ import arviz as az
 # more handy imports
 import hssm
 from utils_plot import results_long2wide_hddmnn, corrfunc
+import pymc as pm
 
 # ============================================ #
 # define some functions
@@ -68,7 +69,7 @@ def run_model(data, modelname, mypath, trace_id=0, **kwargs):
         "cores": kwargs.get('cores', 4),
         "draws": kwargs.get('draws', 1000),
         "tune": kwargs.get('tune', 1000),
-        "idata_kwargs": kwargs.get('idata_kwargs', dict(log_likelihood=False))  # return log likelihood
+        "idata_kwargs": kwargs.get('idata_kwargs', dict(log_likelihood=True))  # return log likelihood
     }
     m = make_model(data, modelname)
     time.sleep(trace_id) # to avoid different jobs trying to make the same folder
@@ -81,7 +82,9 @@ def run_model(data, modelname, mypath, trace_id=0, **kwargs):
     print("begin sampling") # this is the core of the fitting
 
     # Sample from the model
-    inference_data = m.sample(**sampling_params)
+    # inference_data = m.sample(**sampling_params)
+    inference_data = m.sample() #hard coded for debug. Fine for most uses now. 
+                            #   step = pm.NUTS( model=m.pymc_model, target_accept=0.90, max_treedepth=15))
 
     print('saving model itself')
 
@@ -141,15 +144,16 @@ def aggregate_model_comparisons(directory):
 
     return 'File saved as aggregated_model_comparisons.csv'
 
-def reattach(filename, model, data):
-    import arviz as az
-    from utils_hssm_modelspec import make_model
-    #load the inferenceData object
-    inferd = az.from_netcdf(filename)
-    #reattch to the model
-    m = make_model(data,  model)
-    m._inference_obj = inferd
-    return m
+# hssm new verions has something that does this now
+# def reattach(filename, model, data):
+#     import arviz as az
+#     from utils_hssm_modelspec import make_model
+#     #load the inferenceData object
+#     inferd = az.from_netcdf(filename)
+#     #reattch to the model
+#     m = make_model(data,  model)
+#     m._inference_obj = inferd
+#     return m
 
 
 

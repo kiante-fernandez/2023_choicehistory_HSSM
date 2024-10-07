@@ -485,3 +485,51 @@ def dependent_corr(xy, xz, yz, n, twotailed=True, conf_level=0.95, method='steig
         raise Exception('Wrong method!')
     
 
+def conditional_history_plot(df, n_quantiles=5):
+    # Ensure 'rt' and 'repeat' columns exist
+    if 'rt' not in df.columns or 'repeat' not in df.columns:
+        raise ValueError("DataFrame must contain 'rt' and 'repeat' columns")
+
+    # Create RT quantiles
+    df['rt_quantile'] = pd.qcut(df['rt'], q=n_quantiles, labels=False)
+
+    # Calculate mean repeat probability for each subject and RT quantile
+    grouped_data = df.groupby(['participant_id', 'rt_quantile'])['repeat'].mean().reset_index()
+
+    # Calculate overall mean and standard error for each RT quantile
+    summary_data = grouped_data.groupby('rt_quantile').agg({
+        'repeat': ['mean', 'sem']
+    }).reset_index()
+    summary_data.columns = ['rt_quantile', 'mean_repeat', 'sem_repeat']
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    # Plot individual subject lines
+    for subject in df['participant_id'].unique():
+        subject_data = grouped_data[grouped_data['participant_id'] == subject]
+        ax.plot(subject_data['rt_quantile'], subject_data['repeat'], 
+                color='gray', alpha=0.3, linewidth=0.5)
+
+    # Plot mean with error bars
+    ax.errorbar(summary_data['rt_quantile'], summary_data['mean_repeat'],
+                yerr=summary_data['sem_repeat'], 
+                fmt='-o', color='black', ecolor='black', 
+                capsize=5, linewidth=2, markersize=8)
+
+    # Customize the plot
+    ax.set_xlabel('RT Quantile')
+    ax.set_ylabel('P(repeat)')
+    ax.set_title('Conditional Bias Function')
+    ax.set_xticks(range(n_quantiles))
+    ax.set_xticklabels([f'Q{i+1}' for i in range(n_quantiles)])
+    ax.set_ylim(0.45, 0.60)
+    ax.axhline(y=0.5, color='red', linestyle='--', linewidth=1, alpha=0.7)
+
+    sns.despine(trim=True)
+    plt.tight_layout()
+
+    return fig
+
+# testing
+# fig = conditional_history_plot(dataset)
+# plt.show()
