@@ -16,6 +16,7 @@ from datetime import datetime
 import re 
 from tqdm import tqdm
 import utils_choice_history as more_tools
+import seaborn
 
 from one.api import ONE
 ONE.setup(base_url='https://openalyx.internationalbrainlab.org', silent=True)
@@ -77,9 +78,9 @@ for subject in tqdm(subjects):
         except: print ('skippint %s, has seen biased or ephys before getting trained'%subject); continue
         
         # now find the num_sessions before this
-        num_sessions = 1
+        num_sessions = 3
         if num_sessions > 1:
-            dates_before_trained = all_dates[first_trained_loc-3:first_trained_loc]
+            dates_before_trained = all_dates[first_trained_loc-num_sessions:first_trained_loc]
         elif num_sessions == 1:
             # try to get only 1 session instead - ensure a list
             dates_before_trained = [all_dates[first_trained_loc-1]]
@@ -104,10 +105,10 @@ for subject in tqdm(subjects):
         trials['trialnum'] = trials.groupby(['session_start_time']).cumcount()
         trials['response'] = trials['choice'].map({1: 0, 0: np.nan, -1: 1})
         trials['correct']  = trials['feedbackType'].map({-1: 0, 1: 1})
-        # use a very crude measure of RT: trial duration 
-        trials['rt'] = trials['response_times'] - trials['goCue_times']
+        # use a very crude measure of RT: trial duration - see https://docs.google.com/document/d/1s1huCm6eap2cdI6e-3cEnMpH8fP7KvXd16h_350WCU8/edit
+        trials['rt'] = trials['response_times'] - trials['stimOn_times']
         # additionally, save the movement onset
-        trials['movement_onset'] = trials['firstMovement_times'] - trials['goCue_times']
+        trials['movement_onset'] = trials['firstMovement_times'] - trials['stimOn_times']
         trials['prior_bias'] = trials['probabilityLeft']
         # for trainingChoiceWorld, the probabilityLeft is always 0.5
         if whichTask == 'trainingChoiceWorld': trials['prior_bias'] = 0.5
@@ -115,30 +116,34 @@ for subject in tqdm(subjects):
         trials['subj_idx'] = subject
         trials['eid'] = trials.index
 
-        # TODO: Add is_final_movement to trial selection: https://int-brain-lab.github.io/iblenv/notebooks_external/docs_wheel_moves.html#Finding-reaction-time-and-'determined'-movements
+        # TODO: Add is_final_movement to trial selection: 
+        # https://int-brain-lab.github.io/iblenv/notebooks_external/docs_wheel_moves.html#Finding-reaction-time-and-'determined'-movements
 
-        # assert that we have good enough behavior in each session
-        trials['contrast_level'] = trials['abs_contrast'] >= 50
-        perf = trials.groupby(['session_start_time', 'contrast_level'])['correct'].mean().reset_index()
+        # 1. check that we have all contrasts introduced in each session
+        num_contrast = trials['abs_contrast'].unique()
+        try: assert len(num_contrast) >= 5 # there should be 5 or more
+        except: print('skipping %s, not all contrasts introduced'%subject); print(num_contrast); continue
 
-        # 1. check that performance is above 90% for all easy trials
-        try: assert all(perf[(perf['contrast_level'] == True)]['correct'] > 0.90)
-        except: print('skipping %s, performance too low'%subject); continue
-
-        # 2. check that we have all contrasts introduced in each session
-        num_contrast = trials.groupby(['session_start_time'])['abs_contrast'].nunique().reset_index()
-        try: assert all(num_contrast['abs_contrast'] == 5)
-        except: print('skipping %s, not all contrasts introduced'%subject); continue
-
-        # 3. check that we have > 400 trials in each session
+        # 2. check that we have > 400 trials in each session
         num_trials = trials.groupby(['session_start_time'])['trialnum'].count().reset_index()
         try: assert all(num_trials['trialnum'] > 400)
         except: print('skipping %s, not enough trials '%subject); continue
 
-        # 4. check that median RT is below some reasonable value
-        median_rt = trials.groupby(['session_start_time', 'abs_contrast'])['rt'].median().reset_index()
+        # 3. check that performance is above 90% for all easy trials
+        # assert that we have good enough behavior in each session
+        trials['high_contrast_level'] = trials['abs_contrast'] >= 50
+        perf = trials.groupby(['high_contrast_level'])['correct'].mean().reset_index()
+        try: assert all(perf[(perf['high_contrast_level'] == True)]['correct'] > 0.80)
+        except: print('skipping %s, performance too low'%subject); print(perf); continue
+
+        # 4. check that median RT is below some reasonable value in each session
+        median_rt = trials.groupby(['session_start_time'])['rt'].median().reset_index()
         try: assert all(median_rt['rt'] < 1)
         except: print('skipping %s, RT too slow '%subject); continue
+
+        # 5. check that we don't have negative RTs
+        try: assert all(trials.rt > 0)
+        except: print('skipping %s, negative RTs '%subject); continue
 
         # continue only with some columns we need
         trials = trials[['eid', 'subj_idx', 'session_start_time', 'signed_contrast', 'prior_bias',
@@ -155,13 +160,6 @@ print('# sessions included:')
 print(len(np.unique(data.session_start_time)))
 print('# subjects included:')
 print(len(np.unique(data.subj_idx)))
-
-# %% FOURTH, CLEAN AND PREPROCESS THE DATA
-# remove RTs that sit outside the cutoff window
-# define how we quantify RTs
-# data['rt_raw'] = data['rt'].copy()
-# data['rt'] = more_tools.clean_rts(data['rt'], cutoff=[0.08, 2], 
-#                                   compare_with=None)
 
 # add choice history information
 data = more_tools.compute_choice_history(data)

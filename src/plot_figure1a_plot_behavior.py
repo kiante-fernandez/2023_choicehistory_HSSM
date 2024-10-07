@@ -6,6 +6,7 @@ Anne Urai, Leiden University, 2023
 # %%
 import pandas as pd
 import os
+import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import utils_plot as tools
@@ -20,11 +21,12 @@ script_dir = os.path.dirname(os.path.realpath(__file__))
 dataset = 'ibl_trainingChoiceWorld_20240715'
 # dataset = 'visual_motion_2afc_fd'
 
-fig_file_path = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM','results', 'figures')
-data_file_path = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM', 'data', dataset + '.csv')
+# Construct the path to the data file
+fig_folder_path = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM','results', 'figures')
+data_folder_path = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM', 'data')
 
 #load data
-data = pd.read_csv(data_file_path)
+data = pd.read_csv(os.path.join(data_folder_path, '%s.csv'%dataset))
 if dataset == 'visual_motion_2afc_fd':
       data['signed_contrast'] = data['stimulus'] * data['coherence']
 
@@ -43,7 +45,7 @@ fig.despine(trim=True)
 fig.set_axis_labels('Signed contrast (%)', 'Rightward choice (%)')
 ax.set_title('a. Psychometric function (n = %d)'%data.subj_idx.nunique())
 
-fig.savefig(os.path.join(fig_file_path, "%s_psychfuncs.png"%dataset), dpi=300)
+fig.savefig(os.path.join(fig_folder_path, "%s_psychfuncs.png"%dataset), dpi=300)
 
 # %% ================================= #
 # CHRONFUNCS on good RTs
@@ -58,7 +60,7 @@ for axidx, ax in enumerate(fig.axes.flat):
 fig.despine(trim=True)
 fig.set_axis_labels('Signed contrast (%)', 'RT (s)')
 ax.set_title('b. Chronometric function (n = %d)'%data.subj_idx.nunique())
-fig.savefig(os.path.join(fig_file_path, "%s_chronfuncs.png"%dataset), dpi=300)
+fig.savefig(os.path.join(fig_folder_path, "%s_chronfuncs.png"%dataset), dpi=300)
 
 # and RT distributions
 fig = sns.FacetGrid(data, hue="subj_idx")
@@ -72,11 +74,13 @@ for axidx, ax in enumerate(fig.axes.flat):
 fig.despine(trim=True, offset=1)
 fig.set_axis_labels('RT (s)', ' ')
 ax.set_title('RT distributions')
-fig.savefig(os.path.join(fig_file_path, "%s_rtdist.png"%dataset), dpi=300)
+fig.savefig(os.path.join(fig_folder_path, "%s_rtdist.png"%dataset), dpi=300)
 
-# DISTRIBUTION OF RESULTING RTS
-data['rt_raw'] = data['rt'].copy()
-rt_cutoff = [0.08, 2]
+# %% ================================= #
+# DISTRIBUTION OF RESULTING RTS after cutoff
+# ================================= #
+
+rt_cutoff = [data['rt'].min(), data['rt'].max()] # read in the values that have already been defined in the get_ibl_data script
 if data['rt_raw'].min() < rt_cutoff[0] and data['rt_raw'].max() > rt_cutoff[1]:
         # make strings for bin labels based on rt_cutoff values
         bin_labels = ['< %.2fs'%(rt_cutoff[0]), 
@@ -105,7 +109,17 @@ percent_below = (data.rt_raw < rt_cutoff[0]).mean() * 100
 percent_above = (data.rt_raw >= rt_cutoff[1]).mean() * 100
 plt.annotate('%d%%'%percent_below, xy=(rt_cutoff[0]/2, 2000), ha='center', fontsize=7)
 plt.annotate('%d%%'%percent_above, xy=(rt_cutoff[1]-0.1, 3000), ha='center', fontsize=7)
-fig.savefig(os.path.join(fig_file_path, "%s_rtdist_cleaned.png"%dataset), dpi=300)
+fig.savefig(os.path.join(fig_folder_path, "%s_rtdist_cleaned.png"%dataset), dpi=300)
+
+# %% ================================= #
+# RT distributions per subject
+# ================================= #
+
+fig = sns.FacetGrid(data, col="subj_idx", col_wrap=np.ceil(np.sqrt(data.subj_idx.nunique())).astype(int),
+                        sharex=True, sharey=False)
+fig.map(sns.histplot, "rt_raw", binwidth=0.05, element='step', color='darkblue')
+fig.map(sns.histplot, "rt", binwidth=0.05, element='step', color='red')
+fig.savefig(os.path.join(fig_folder_path, "%s_rtdist_allsj.png"%dataset), dpi=300)
 
 # %% ================================= #
 # USE THE SAME FILE AS FOR HDDM FITS
@@ -132,7 +146,7 @@ fig.set_axis_labels('Signed evidence (%)', 'Rightwards choice (%)')
 for axidx, ax in enumerate(fig.axes.flat):
         ax.set_title('History bias')
 fig.despine(trim=True)
-fig.savefig(os.path.join(fig_file_path, "%s_psychfuncs_history.png"%dataset), dpi=300)
+fig.savefig(os.path.join(fig_folder_path, "%s_psychfuncs_history.png"%dataset), dpi=300)
 plt.close('all')
 
 #%% also previous history chronometric 
@@ -143,7 +157,7 @@ for axidx, ax in enumerate(fig.axes.flat):
         ax.set_title('History-dependent chronometric')
         # ax.set_ylim([0, 3])
 fig.despine(trim=True)
-fig.savefig(os.path.join(fig_file_path, "%s_chronfuncs_history.png"%dataset), dpi=300)
+fig.savefig(os.path.join(fig_folder_path, "%s_chronfuncs_history.png"%dataset), dpi=300)
 plt.close('all')
 
 # %%
