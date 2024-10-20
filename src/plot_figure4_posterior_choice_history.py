@@ -15,9 +15,10 @@ MODEL_NAMES = [
     "ddm_prevresp_z",
     "ddm_prevresp_zv"
 ]
+
 DIRECTORY = '/Users/kiante/Documents/2023_choicehistory_HSSM/results/models'
 PLOT_DIRECTORY = "/Users/kiante/Documents/2023_choicehistory_HSSM/results/figures"
-MOUSE_DATA_PATH = '/Users/kiante/Documents/2023_choicehistory_HSSM/data/ibl_trainingChoiceWorld_20240908.csv'
+MOUSE_DATA_PATH = '/Users/kiante/Documents/2023_choicehistory_HSSM/data/ibl_trainingChoiceWorld_clean_20241003.csv'
 
 def load_and_preprocess_data(file_path):
     mouse_data = pd.read_csv(file_path)
@@ -27,8 +28,8 @@ def load_and_preprocess_data(file_path):
     mouse_data = mouse_data.dropna(subset=['rt', 'response', 'prevresp'])
     mouse_data = mouse_data[mouse_data['rt'] >= 0]
     
-    selected_subjects = ['CSHL052', 'CSHL059', 'CSHL060', 'CSH_ZAD_019', 'KS046', 'PL037', 'SWC_058', 'UCLA036', 'UCLA048', 'ZFM-01936']
-    mouse_data = mouse_data[mouse_data['subj_idx'].isin(selected_subjects)]
+    # selected_subjects = ['CSHL052', 'CSHL059', 'CSHL060', 'CSH_ZAD_019', 'KS046', 'PL037', 'SWC_058', 'UCLA036', 'UCLA048', 'ZFM-01936']
+    # mouse_data = mouse_data[mouse_data['subj_idx'].isin(selected_subjects)]
     
     mouse_data['stimrepeat'] = np.where(mouse_data.signed_contrast == mouse_data.signed_contrast.shift(1), 1, 0)
     mouse_data['repeat'] = np.where(mouse_data.response == mouse_data.prevresp, 1, 0)
@@ -90,7 +91,8 @@ def process_model(model, prep, dataset_name, model_name):
     # Create other plots
     az.style.use("arviz-doc")
 
-    for plot_type in ['posterior', 'trace', 'forest', 'pair']:
+    # for plot_type in ['posterior', 'trace', 'forest', 'pair']:
+    for plot_type in ['posterior', 'trace']: #just want trace the ppc
         plot_file_name = f"{dataset_name}_{model_name}_{plot_type}plot.png"
         plot_file_path = os.path.join(PLOT_DIRECTORY, plot_file_name)
         
