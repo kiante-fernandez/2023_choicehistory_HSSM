@@ -57,6 +57,27 @@ def make_model(data, mname_full):
              "prior": {"Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1}},
              "formula": "a ~ 1 + (1 |participant_id)"}
         ],
+        #add the cat config for the contrast model
+        'catnohist': [
+            {"name": "v", 
+             "prior": {
+                "Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1},
+                "signed_contrast": {"name": "Normal", "mu": 0.0, "sigma": 1},
+             },
+             "formula": "v ~ C(signed_contrast) + (C(signed_contrast) |participant_id)",
+            #  "formula": "v ~ 0 + C(signed_contrast) + (0 + C(signed_contrast) |participant_id)", 
+ 
+             "link": "identity"},
+            {"name": "z", 
+             "prior": {"Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1}},
+             "formula": "z ~ 1 + (1 |participant_id)"},
+            {"name": "t", 
+             "prior": {"Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1}},
+             "formula": "t ~ 1 + (1 |participant_id)"},
+            {"name": "a", 
+             "prior": {"Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1}},
+             "formula": "a ~ 1 + (1 |participant_id)"}
+        ],
         'prevresp_v': [
             {"name": "v", 
              "prior": {
@@ -129,7 +150,9 @@ def make_model(data, mname_full):
         p_outlier={"name": "Uniform", "lower": 0.0001, "upper": 0.50},
         lapse=bmb.Prior("Uniform", lower=0.0, upper=30.0),
         model="ddm", #hard-coded for now
+        # model="angle", #hard-coded for now (need to try others, angle, etc)
         loglik_kind="analytical",
+        # loglik_kind="approx_differentiable",
         include=model_specs[mname],
         prior_settings="safe",
         link_settings="log_logit"
