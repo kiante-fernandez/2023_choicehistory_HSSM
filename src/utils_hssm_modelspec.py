@@ -124,12 +124,31 @@ def make_model(data, mname_full):
     if mname not in model_specs:
         raise ValueError('Model name not recognized!')
 
+    # Add theta parameter if the model is an angle model
+    if "angle" in base_model:
+        model_specs[mname].append({
+            "name": "theta",
+            "prior": {"Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1}},
+            "formula": "theta ~ 1 + (1 |participant_id)"
+        })
+    if "weibull" in base_model:
+        model_specs[mname].append({
+            "name": "alpha",
+            "prior": {"Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1}},
+            "formula": "alpha ~ 1 + (1 |participant_id)"
+            })
+        model_specs[mname].append({
+            "name": "beta",
+            "prior": {"Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1}},
+            "formula": "beta ~ 1 + (1 |participant_id)"
+            })
+           
     hssm_model = hssm.HSSM(
         data=data, 
         p_outlier={"name": "Uniform", "lower": 0.0001, "upper": 0.50},
         lapse=bmb.Prior("Uniform", lower=0.0, upper=30.0),
-        model="ddm", #hard-coded for now
-        loglik_kind="analytical",
+        model=base_model, #hard-coded for now
+        loglik_kind="approx_differentiable",
         include=model_specs[mname],
         prior_settings="safe",
         link_settings="log_logit"
