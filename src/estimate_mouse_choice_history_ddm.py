@@ -19,6 +19,11 @@ from utils_hssm import run_model
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy import stats
+import jax
+import pytensor  # Graph-based tensor library
+
+pytensor.config.floatX = "float32"
+jax.config.update("jax_enable_x64", False)
 
 def load_and_preprocess_mouse_data(file_path):
     mouse_data = pd.read_csv(file_path)
@@ -178,7 +183,10 @@ def main():
     print_dataset_stats(dataset)
     
     # Define models to estimate
-    model_names = ["ddm_nohist", "ddm_prevresp_v", "ddm_prevresp_z", "ddm_prevresp_zv"]
+    model_names = [
+        "ddm_nohist", "ddm_prevresp_v", "ddm_prevresp_z", "ddm_prevresp_zv",
+        "angle_nohist", "angle_prevresp_v", "angle_prevresp_z", "angle_prevresp_zv",
+        "weibull_nohist", "weibull_prevresp_v", "weibull_prevresp_z", "weibull_prevresp_zv"]
 
     # Parameters for sampling
     sampling_params = {"chains": 4, "cores": 4, "draws": 2000, "tune": 2000}
@@ -190,12 +198,14 @@ def main():
             print(f"Model {name} already exists. Skipping.")
         else:
             print(f"Running model: {name}")
-            model = run_model(dataset, name, script_dir, **sampling_params)
+#            model = run_model(dataset, name, script_dir, **sampling_params)
+            model = run_model(dataset, name, script_dir, sampling_method="vi", **sampling_params)
+
             print(f"Model {name} completed and saved.")
 
     # Model comparison
     combine_model_comparison_csvs(script_dir, model_names)
-    plot_model_comparison(script_dir)
+#    plot_model_comparison(script_dir)
 
 if __name__ == "__main__":
     main()

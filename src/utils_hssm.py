@@ -9,6 +9,7 @@ matplotlib.use('Agg') # to still plot even when no display is defined
 import matplotlib.pyplot as plt
 import seaborn as sns
 import arviz as az
+from pymc.variational.callbacks import CheckParametersConvergence
 
 # more handy imports
 import hssm
@@ -57,7 +58,7 @@ def dic(inference_data):
 # Assuming `HSSM` is the class of your HSSM objects and `inference_data` is the InferenceData attribute
 hssm.HSSM.saveInferenceData = saveInferenceData
 
-def run_model(data, modelname, mypath, trace_id=0, **kwargs):
+def run_model(data, modelname, mypath, trace_id=0, sampling_method ="mcmc", **kwargs):
 
     from utils_hssm_modelspec import make_model # specifically for HSSM models
 
@@ -79,37 +80,68 @@ def run_model(data, modelname, mypath, trace_id=0, **kwargs):
         os.makedirs(mypath)
         print('creating directory %s' % mypath)
 
-    print("begin sampling") # this is the core of the fitting
+    print("begin estimation")
 
     # Sample from the model
-    # inference_data = m.sample(**sampling_params)
-    inference_data = m.sample() #hard coded for debug. Fine for most uses now. 
-                            #   step = pm.NUTS( model=m.pymc_model, target_accept=0.90, max_treedepth=15))
+    if sampling_method == "mcmc":
+        # Run sampling
+        # inference_data = m.sample(**sampling_params)
+        inference_data = m.sample() #hard coded for debug. Fine for most uses now. 
+        
+        print('saving model itself')
 
-    print('saving model itself')
-
-    # Save the InferenceData object
-    inference_data.to_netcdf(os.path.join(mypath, f'{modelname}_model.nc'))
+        # Save the InferenceData object
+        inference_data.to_netcdf(os.path.join(mypath, f'{modelname}_model.nc'))
     
-    print("save model comparison indices")
-    df = dict()
-    import arviz as az
-    df = dict()
-    df['dic'] = dic(inference_data)['rt,response'].values.item()
-    df['waic'] = az.waic(inference_data).elpd_waic
-    df['loo'] = az.loo(inference_data).elpd_loo
-    df2 = pd.DataFrame(list(df.items()), columns=['Metric', 'Value'])
-    df2.to_csv(os.path.join(mypath, f'{modelname}_model_comparison.csv'))
+        print("save model comparison indices")
+        df = dict()
+        import arviz as az
+        df = dict()
+        df['dic'] = dic(inference_data)['rt,response'].values.item()
+        df['waic'] = az.waic(inference_data).elpd_waic
+        df['loo'] = az.loo(inference_data).elpd_loo
+        df2 = pd.DataFrame(list(df.items()), columns=['Metric', 'Value'])
+        df2.to_csv(os.path.join(mypath, f'{modelname}_model_comparison.csv'))
 
-    # save useful output
-    print("saving summary stats")
-    results =  az.summary(inference_data).reset_index()  # point estimate for each parameter and subject
-    results.to_csv(os.path.join(mypath, f'{modelname}_results_combined.csv'))
+        # save useful output
+        print("saving summary stats")
+        results =  az.summary(inference_data).reset_index()  # point estimate for each parameter and subject
+        results.to_csv(os.path.join(mypath, f'{modelname}_results_combined.csv')) 
+        
+    elif sampling_method == "vi":
+        import arviz as az
+        # Run VI sampling
+        vi_approx = m.vi(niter=60000,method="fullrank_advi", callbacks=[CheckParametersConvergence(diff='absolute')])
+        vi_samples = m.vi_approx.sample(draws=1000)
 
-    # print("saving traces")
-    # # get the names for all nodes that are available here
-    # group_traces = inference_data.posterior.to_dataframe()
-    # group_traces.to_csv(os.path.join(mypath, f'{modelname}_group_traces.csv'))    
+        #az_data = az.from_pymc3(vi_samples)
+        
+        # Save the VI samples
+        #m.to_netcdf(os.path.join(mypath, f'{modelname}_model.nc'))
+        plt.plot(m.vi_approx.hist)
+        hist_file = os.path.join(mypath, f'{modelname}_vi_loss_hist.png')
+        plt.savefig(hist_file)
+        plt.close()
+        # Extract and save summary statistics
+        print("saving summary stats")
+        results = az.summary(m.vi_idata).reset_index()
+        results.to_csv(os.path.join(mypath, f'{modelname}_results_combined.csv')) 
+        
+        idatavi = m.vi_idata
+        
+        with m.pymc_model:
+            pm.compute_log_likelihood(idatavi)
+        
+        print("save model comparison indices")
+        df = dict()
+#        df['dic'] = dic(inference_data)['rt,response'].values.item()
+        df['waic'] =  az.waic(idatavi).elpd_waic
+        df['loo'] = az.loo(idatavi).elpd_loo
+        df2 = pd.DataFrame(list(df.items()), columns=['Metric', 'Value'])
+        df2.to_csv(os.path.join(mypath, f'{modelname}_model_comparison.csv'))
+        
+    else:
+        raise ValueError("Unsupported sampling method. Use 'mcmc' or 'vi'.")
     
     return m
 
