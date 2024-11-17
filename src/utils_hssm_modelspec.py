@@ -57,6 +57,27 @@ def make_model(data, mname_full):
              "prior": {"Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1}},
              "formula": "a ~ 1 + (1 |participant_id)"}
         ],
+        #add the cat config for the contrast model
+        'catnohist': [
+            {"name": "v", 
+             "prior": {
+                "Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1},
+                "signed_contrast": {"name": "Normal", "mu": 0.0, "sigma": 1},
+             },
+             "formula": "v ~ C(signed_contrast) + (C(signed_contrast) |participant_id)",
+            #  "formula": "v ~ 0 + C(signed_contrast) + (0 + C(signed_contrast) |participant_id)", 
+ 
+             "link": "identity"},
+            {"name": "z", 
+             "prior": {"Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1}},
+             "formula": "z ~ 1 + (1 |participant_id)"},
+            {"name": "t", 
+             "prior": {"Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1}},
+             "formula": "t ~ 1 + (1 |participant_id)"},
+            {"name": "a", 
+             "prior": {"Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1}},
+             "formula": "a ~ 1 + (1 |participant_id)"}
+        ],
         'prevresp_v': [
             {"name": "v", 
              "prior": {
