@@ -1,6 +1,6 @@
 # History-Dependent Decision-Making across Species
 
-This repository hosts the code and supplementary materials for the paper "History-Dependent Decision-Making across Species." Our research delves into the decision-making behaviors of humans and mice, revealing a shared cognitive strategy of history-dependent evidence accumulation.
+This repository hosts the code and supplementary materials for the paper "History-Dependent Decision-Making across Species."
 
 > **History-Dependent Decision-Making across Species**  
 > Kianté Fernandez<sup>2</sup>, Alexander Fengler<sup>2</sup>, and Anne Urai<sup>3</sup>  
@@ -9,13 +9,12 @@ This repository hosts the code and supplementary materials for the paper "Histor
 > <sup>3</sup>Department of Psychology, Leiden University, The Netherlands 
 
 ## Abstract
-In our study, we analyze decision-making behaviors in humans and mice, uncovering a common cognitive strategy involving history-dependent evidence accumulation. The study reveals that individual differences in choice repetition are influenced by a history-dependent bias in the rate of evidence accumulation, rather than its starting point, emphasizing the importance of evidence integration across multiple temporal scales. This discovery is crucial for understanding decision-making processes across mammalian species and sets the foundation for future research into the neural dynamics of these phenomena.
+Mice are increasingly used to study the neural circuit-level basis of behavior, often with the ultimate goal to extrapolate these insights to humans. To generalize insights about neural functioning between species, it is crucial to first ensure correspondence in behavioral and cognitive strategy. Here, we analyzed decision-making behavior in both humans and mice, and identified the same cognitive strategy of history-dependent evidence accumulation. Specifically, individual differences in choice repetition were explained by a history-dependent bias in the rate of evidence accumulation – rather than its starting point. Evidence integration over multiple temporal scales thus reflects a fundamental aspect of decision-making, conserved across mammalian species. 
 
 ## Requirements
 
 - [HSSM - Hierarchical Sequential Sampling Modeling](https://github.com/lnccbrown/HSSM)
-- [Package to train likelihood-approximation networks](https://github.com/AlexanderFengler/LANfactory)
-- [iblenv](https://github.com/int-brain-lab/iblenv)
+- [Open Neurophysiology Environment](https://int-brain-lab.github.io/ONE/)
 
 ## Repository Contents
 - `data/` - Datasets used in the study.
@@ -34,7 +33,6 @@ In our study, we analyze decision-making behaviors in humans and mice, uncoverin
 2. Install the required packages:
    ```bash
    pip install -r requirements.txt
-   conda activate iblenv
    ```
 
 ## Usage
@@ -51,6 +49,8 @@ In our study, we analyze decision-making behaviors in humans and mice, uncoverin
    figure1a_plot_behavior.py # Plots basic data insights
    figure1b_choice_history.py # Fits psychometric functions with history terms
    figure1c_history_strategy.py
+   estimate_mouse_choice_history_ddm.py #estimates selected SSMs from data
+   figure4_posterior_choice_history.py # Plots diagnostic results from SSM estimation
    ```
 
 ### Contribute to the repo
