@@ -16,10 +16,8 @@ import glob
 import seaborn as sns
 import pymc as pm
 import matplotlib.pyplot as plt
-from hssm import set_floatX
 import hssm 
 #%matplotlib inline
-set_floatX("float32")
 #%% load data
 script_dir = os.path.dirname(os.path.realpath(__file__))
 data_file_path = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM', 'data')
@@ -34,6 +32,39 @@ elife_data['participant_id'] = elife_data['subj_idx']
 
 excluded_participants = [11, 19, 20, 22, 26, 27, 28] 
 elife_data = elife_data[~elife_data['participant_id'].isin(excluded_participants)]
+
+#%% Hierarchical version of estimation
+hssm_model = hssm.HSSM(data=elife_data,
+                            model="ddm",
+                            p_outlier={"name": "Uniform", "lower": 0.0001, "upper": 0.50},
+                            lapse=hssm.Prior("Uniform", lower=0.0, upper=20.0),
+                            include=[
+            {"name": "v", 
+             "prior": {
+                "Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1},
+                "signed_contrast": {"name": "Normal", "mu": 0.0, "sigma": 1},
+                "prevresp": {"name": "Normal", "mu": 0.0, "sigma": 1},
+             },
+             "formula": "v ~ signed_contrast + prevresp + (signed_contrast + prevresp |participant_id)", 
+             "link": "identity"},
+            {"name": "z", 
+             "prior": {
+                "Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1},
+                "prevresp": {"name": "Normal", "mu": 0.0, "sigma": 1},
+             },
+             "formula": "z ~ 1 + prevresp + (prevresp |participant_id)"},
+            {"name": "t", 
+             "prior": {"Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1}},
+             "formula": "t ~ 1 + (1 |participant_id)"},
+            {"name": "a", 
+             "prior": {"Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1}},
+             "formula": "a ~ 1 + (1 |participant_id)"}], 
+                                loglik_kind="analytical",
+                                prior_settings="safe",
+                                link_settings="log_logit")    
+    
+hierarchical_sample_res = hssm_model.sample()
+
 #%% single subject parameter estimation
 participants = elife_data['participant_id'].unique()
 
@@ -269,13 +300,13 @@ data = pd.read_csv(os.path.join(data_file_path, 'visual_motion_2afc_fd_hddmfits.
 selected_data = data.filter(regex='subjnr|regressdczprevresplag1|t__stimcodingdczprevresp')
 
 rename_dict = {
-    'subjnr': 'participant_id',
-    'a__regressdczprevresplag1': 'a',
-    't__stimcodingdczprevresp': 't',
-    'v_Intercept__regressdczprevresplag1': 'v_Intercept',
+    'subjnr': 'subject',
+    'a__regressdczprevresplag1': 'a_1',
+    't__stimcodingdczprevresp': 't_1',
+    'v_Intercept__regressdczprevresplag1': 'v_1',
     'v_stimulus__regressdczprevresplag1': 'v_signed_contrast',
     'v_prevresp__regressdczprevresplag1': 'v_prevresp',
-    'z_Intercept__regressdczprevresplag1': 'z_Intercept',
+    'z_Intercept__regressdczprevresplag1': 'z_1',
     'z_prevresp__regressdczprevresplag1': 'z_prevresp'
 }
 selected_data = data.rename(columns=rename_dict)
