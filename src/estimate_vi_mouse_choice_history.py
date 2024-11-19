@@ -6,7 +6,7 @@
 # Date            Programmers                                Descriptions of Change
 # ====         ================                              ======================
 # 2024/11/17      Kianté Fernandez<kiantefernan@gmail.com>   coded version single subject
-
+#%%
 import os
 import warnings
 import numpy as np
@@ -206,15 +206,27 @@ def create_subject_model(subject_data):
 
 def fit_subject_model(subject_model):
     """Fit the HSSM model for a subject."""
-    with subject_model.pymc_model:
-        advi = pm.FullRankADVI()
-    
     # Setup initial point
     start = subject_model.pymc_model.initial_point()
-    vars_dict = {var.name: var for var in subject_model.pymc_model.continuous_value_vars}
-    x0 = DictToArrayBijection.map(
-        {var_name: value for var_name, value in start.items() if var_name in vars_dict}
-    )
+    
+    # Transform to set t to 0.100 using the correct interval transformation
+    t_lower = np.float32(0.001)
+    t_upper = np.float32(2.0)
+    desired_t = np.float32(0.200)
+    # Correct transformation for interval bounded variable
+    t_interval = np.float32(np.log((desired_t - t_lower)/(t_upper - desired_t)))
+    
+    # Update the start dictionary with our transformed t value
+    start['t_interval__'] = t_interval
+    
+    # Print the starting values to verify
+    # print("Starting values:")
+    # print(f"t_interval: {t_interval}")
+    # print(f"t (untransformed): {t_lower + (t_upper - t_lower)/(1 + np.exp(-t_interval))}")
+    
+    with subject_model.pymc_model:
+        # Initialize ADVI with our starting point
+        advi = pm.FullRankADVI(start=start)
     
     # Setup tracker
     tracker = pm.callbacks.Tracker(
@@ -226,11 +238,20 @@ def fit_subject_model(subject_model):
         ),
     )
     
+    # Create bijection for initial point
+    vars_dict = {var.name: var for var in subject_model.pymc_model.continuous_value_vars}
+    x0 = DictToArrayBijection.map(
+        {var_name: value for var_name, value in start.items() if var_name in vars_dict}
+    )
+    
     # Fit model
-    approx = advi.fit(n=30000, callbacks=[tracker])
+    approx = advi.fit(
+        n=100000,
+        callbacks=[tracker],
+        obj_optimizer=pm.adam(learning_rate=0.01)
+    )
+    
     vi_posterior_samples = approx.sample(1000)
-    #drop p_outlier
-    #vi_posterior_samples.posterior = vi_posterior_samples.posterior.drop_vars("p_outlier")
     
     # Process results
     result = tracker_to_idata(tracker, subject_model.pymc_model)
@@ -297,5 +318,6 @@ def main():
         # Save results
         save_subject_results(subject_id, result, vi_posterior_samples, output_folder)
 
+#%%
 if __name__ == "__main__":
     main()
