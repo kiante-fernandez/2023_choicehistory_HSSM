@@ -109,6 +109,7 @@ for subject in tqdm(subjects):
         trials['rt'] = trials['response_times'] - trials['stimOn_times']
         # additionally, save the movement onset
         trials['movement_onset'] = trials['firstMovement_times'] - trials['stimOn_times']
+        # TODO consider using only trials where the mouse movemnet time is similar to response time. 
         trials['prior_bias'] = trials['probabilityLeft']
         # for trainingChoiceWorld, the probabilityLeft is always 0.5
         if whichTask == 'trainingChoiceWorld': trials['prior_bias'] = 0.5
@@ -138,9 +139,31 @@ for subject in tqdm(subjects):
 
         # 4. check that median RT is below some reasonable value in each session
         median_rt = trials.groupby(['session_start_time'])['rt'].median().reset_index()
-        try: assert all(median_rt['rt'] < 1)
-        except: print('skipping %s, RT too slow '%subject); continue
+        # try: assert all(median_rt['rt'] < 1)
+        # except: print('skipping %s, RT too slow '%subject); continue
 
+        #First apply the lower bound RT criterion (200ms = 0.200s)
+        trials = trials[trials['rt'] > 0.200]
+
+        # 4.1 Apply the IQR-based exclusion per session
+        def apply_iqr_exclusion(group, iqr_multiplier=2):
+            Q1 = group['rt'].quantile(0.25)
+            Q3 = group['rt'].quantile(0.75)
+            IQR = Q3 - Q1
+            return group[
+                (group['rt'] > (Q1 - iqr_multiplier * IQR)) & 
+                (group['rt'] < (Q3 + iqr_multiplier * IQR))
+            ]
+        
+        # Apply the IQR exclusion for each session
+        trials = trials.groupby(['session_start_time']).apply(apply_iqr_exclusion).reset_index(drop=True)
+        
+        # Check if we still have enough trials after RT exclusion
+        trials_per_session = trials.groupby(['session_start_time'])['trialnum'].count()
+        print(trials_per_session)
+        # try: assert all(trials_per_session > 300)  # reduced from 400 to account for excluded trials
+        # except: print('skipping %s, not enough trials after RT exclusion'%subject); continue
+        
         # 5. check that we don't have negative RTs
         try: assert all(trials.rt > 0)
         except: print('skipping %s, negative RTs '%subject); continue
