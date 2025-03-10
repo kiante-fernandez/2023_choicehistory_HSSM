@@ -130,43 +130,27 @@ for subject in tqdm(subjects):
         try: assert all(num_trials['trialnum'] > 400)
         except: print('skipping %s, not enough trials '%subject); continue
 
-        # 3. check that performance is above 90% for all easy trials
+        # 3. check that performance is above 80% for all easy trials
         # assert that we have good enough behavior in each session
         trials['high_contrast_level'] = trials['abs_contrast'] >= 50
         perf = trials.groupby(['high_contrast_level'])['correct'].mean().reset_index()
         try: assert all(perf[(perf['high_contrast_level'] == True)]['correct'] > 0.80)
         except: print('skipping %s, performance too low'%subject); print(perf); continue
 
-        # 4. check that median RT is below some reasonable value in each session
-        median_rt = trials.groupby(['session_start_time'])['rt'].median().reset_index()
-        # try: assert all(median_rt['rt'] < 1)
-        # except: print('skipping %s, RT too slow '%subject); continue
+        # # 4. check that median RT is below some reasonable value in each session
+        # median_rt = trials.groupby(['session_start_time'])['rt'].median().reset_index()
+        # # try: assert all(median_rt['rt'] < 1)
+        # # except: print('skipping %s, RT too slow '%subject); continue
 
-        #First apply the lower bound RT criterion (200ms = 0.200s)
-        trials = trials[trials['rt'] > 0.200]
-
-        # 4.1 Apply the IQR-based exclusion per session
-        def apply_iqr_exclusion(group, iqr_multiplier=2):
-            Q1 = group['rt'].quantile(0.25)
-            Q3 = group['rt'].quantile(0.75)
-            IQR = Q3 - Q1
-            return group[
-                (group['rt'] > (Q1 - iqr_multiplier * IQR)) & 
-                (group['rt'] < (Q3 + iqr_multiplier * IQR))
-            ]
+        # # Check if we still have enough trials after RT exclusion
+        # trials_per_session = trials.groupby(['session_start_time'])['trialnum'].count()
+        # print(trials_per_session)
+        # # try: assert all(trials_per_session > 300)  # reduced from 400 to account for excluded trials
+        # # except: print('skipping %s, not enough trials after RT exclusion'%subject); continue
         
-        # Apply the IQR exclusion for each session
-        trials = trials.groupby(['session_start_time']).apply(apply_iqr_exclusion).reset_index(drop=True)
-        
-        # Check if we still have enough trials after RT exclusion
-        trials_per_session = trials.groupby(['session_start_time'])['trialnum'].count()
-        print(trials_per_session)
-        # try: assert all(trials_per_session > 300)  # reduced from 400 to account for excluded trials
-        # except: print('skipping %s, not enough trials after RT exclusion'%subject); continue
-        
-        # 5. check that we don't have negative RTs
-        try: assert all(trials.rt > 0)
-        except: print('skipping %s, negative RTs '%subject); continue
+        # # 5. check that we don't have negative RTs
+        # #try: assert all(trials.rt > 0)
+        # #except: print('skipping %s, negative RTs '%subject); continue
 
         # continue only with some columns we need
         trials = trials[['eid', 'subj_idx', 'session_start_time', 'signed_contrast', 'prior_bias',
@@ -196,3 +180,19 @@ data.to_csv(output_file, index=False)
 print('Saved file to:')
 print(output_file)
 # %%
+
+#First apply the lower bound RT criterion (200ms = 0.200s)
+trials = trials[trials['rt'] > 0.200]
+
+# 4.1 Apply the IQR-based exclusion per session
+def apply_iqr_exclusion(group, iqr_multiplier=2):
+    Q1 = group['rt'].quantile(0.25)
+    Q3 = group['rt'].quantile(0.75)
+    IQR = Q3 - Q1
+    return group[
+        (group['rt'] > (Q1 - iqr_multiplier * IQR)) & 
+        (group['rt'] < (Q3 + iqr_multiplier * IQR))
+    ]
+
+# Apply the IQR exclusion for each session
+trials = trials.groupby(['session_start_time']).apply(apply_iqr_exclusion).reset_index(drop=True)
