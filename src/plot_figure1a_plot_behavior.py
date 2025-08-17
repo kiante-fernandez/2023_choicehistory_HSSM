@@ -18,7 +18,7 @@ tools.seaborn_style()
 script_dir = os.path.dirname(os.path.realpath(__file__))
 
 # Construct the path to the data file
-dataset = 'ibl_trainingChoiceWorld_20240715'
+dataset = 'ibl_trainingChoiceWorld_raw_20250310'
 # dataset = 'visual_motion_2afc_fd'
 
 # Construct the path to the data file

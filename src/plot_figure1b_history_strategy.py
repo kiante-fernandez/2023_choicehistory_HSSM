@@ -27,7 +27,7 @@ fig_file_path = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM','
 # USE THE SAME FILE AS FOR HDDM FITS
 # ================================= #
 
-data = pd.read_csv(os.path.join(data_file_path, 'ibl_trainingchoiceworld_clean.csv'))
+data = pd.read_csv(os.path.join(data_file_path, 'ibl_trainingChoiceWorld_raw_20250310.csv'))
 data.head(n=10)
 
 # %% ================================= #

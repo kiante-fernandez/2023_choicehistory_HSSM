@@ -86,8 +86,11 @@ def run_model(data, modelname, mypath, trace_id=0, sampling_method ="mcmc", **kw
     if sampling_method == "mcmc":
         # Run sampling
         # inference_data = m.sample(**sampling_params)
-        inference_data = m.sample() #hard coded for debug. Fine for most uses now. 
-        
+        # inference_data = m.sample(init="advi+adapt_diag",
+        #                           chains=4, cores=4, draws= 1000, tune= 1000) #hard coded for debug. Fine for most uses now. 
+        # inference_data = m.sample(chains=1, cores=1, sampler="nuts_numpyro") 
+        inference_data = m.sample()
+
         print('saving model itself')
 
         # Save the InferenceData object

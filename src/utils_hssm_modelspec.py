@@ -64,9 +64,10 @@ def make_model(data, mname_full):
                 "Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1},
                 "signed_contrast": {"name": "Normal", "mu": 0.0, "sigma": 1},
              },
-             "formula": "v ~ C(signed_contrast) + (C(signed_contrast) |participant_id)",
-            #  "formula": "v ~ 0 + C(signed_contrast) + (0 + C(signed_contrast) |participant_id)", 
- 
+            #  "formula": "v ~ C(signed_contrast) + (C(signed_contrast) |participant_id)",
+            # "formula": "v ~ 0 + C(signed_contrast) + (0 + C(signed_contrast) |participant_id)", 
+             "formula": "v ~ 0 + (1 + C(signed_contrast) |participant_id)",
+
              "link": "identity"},
             {"name": "z", 
              "prior": {"Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1}},
@@ -85,7 +86,7 @@ def make_model(data, mname_full):
                 "signed_contrast": {"name": "Normal", "mu": 0.0, "sigma": 1},
                 "prevresp": {"name": "Normal", "mu": 0.0, "sigma": 1},
              },
-             "formula": "v ~ signed_contrast + prevresp + (signed_contrast + prevresp |participant_id)", 
+             "formula": "v ~ signed_contrast + C(prevresp) + (signed_contrast + C(prevresp) |participant_id)", 
              "link": "identity"},
             {"name": "z", 
              "prior": {"Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1}},
@@ -110,7 +111,7 @@ def make_model(data, mname_full):
                 "Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1},
                 "prevresp": {"name": "Normal", "mu": 0.0, "sigma": 1},
              },
-             "formula": "z ~ 1 + prevresp + (prevresp |participant_id)"},
+             "formula": "z ~ 1 + C(prevresp) + (C(prevresp) |participant_id)"},
             {"name": "t", 
              "prior": {"Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1}},
              "formula": "t ~ 1 + (1 |participant_id)"},
@@ -120,19 +121,19 @@ def make_model(data, mname_full):
         ],
         'prevresp_zv': [
             {"name": "v", 
-             "prior": {
-                "Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1},
-                "signed_contrast": {"name": "Normal", "mu": 0.0, "sigma": 1},
-                "prevresp": {"name": "Normal", "mu": 0.0, "sigma": 1},
-             },
-             "formula": "v ~ signed_contrast + prevresp + (signed_contrast + prevresp |participant_id)", 
+            #  "prior": {
+            #     "Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1},
+            #     "signed_contrast": {"name": "Normal", "mu": 0.0, "sigma": 1},
+            #     "prevresp": {"name": "Normal", "mu": 0.0, "sigma": 1},
+            #  },
+            "formula": "v ~ 0 + prevresp_cat + C(contrast_category, Treatment('c_0.0')) + (0 + prevresp_cat + C(contrast_category, Treatment('c_0.0')) |participant_id)",
              "link": "identity"},
             {"name": "z", 
-             "prior": {
-                "Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1},
-                "prevresp": {"name": "Normal", "mu": 0.0, "sigma": 1},
-             },
-             "formula": "z ~ 1 + prevresp + (prevresp |participant_id)"},
+            #  "prior": {
+            #     "Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1},
+            #     "prevresp": {"name": "Normal", "mu": 0.0, "sigma": 1},
+            #  },
+            "formula": "z ~ 0 + prevresp_cat + (0 + prevresp_cat |participant_id)"},
             {"name": "t", 
              "prior": {"Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1}},
              "formula": "t ~ 1 + (1 |participant_id)"},
@@ -166,13 +167,16 @@ def make_model(data, mname_full):
            
     hssm_model = hssm.HSSM(
         data=data, 
-        p_outlier={"name": "Uniform", "lower": 0.0001, "upper": 0.50},
-        lapse=bmb.Prior("Uniform", lower=0.0, upper=30.0),
+        # p_outlier=None, 
+        # lapse=None,
+        p_outlier={"name": "Beta", "alpha": 6, "beta": 24},
+        lapse=bmb.Prior("Uniform", lower=0.0, upper=10.0),
         model=base_model, #hard-coded for now
-        loglik_kind="approx_differentiable",
+        # loglik_kind="approx_differentiable",
+        loglik_kind="analytical",
         include=model_specs[mname],
-        prior_settings="safe",
-        link_settings="log_logit"
+        prior_settings="safe"
+        # link_settings="log_logit"
     )
 
     return hssm_model
