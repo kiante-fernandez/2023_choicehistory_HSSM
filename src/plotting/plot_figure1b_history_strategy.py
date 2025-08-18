@@ -11,24 +11,58 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import seaborn as sns
 import psychofit as psy
-import utils_plot as tools
-import utils_choice_history as more_tools
+from ..utils import utils_plot as tools
+from ..utils import utils_choice_history as more_tools
 
 ## INITIALIZE A FEW THINGS
 sns.set(style="ticks", context="paper", palette="colorblind")
 tools.seaborn_style()
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
-data_file_path = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM', 'data')
-fig_file_path = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM','results', 'figures')
+data_file_path = os.path.join(script_dir, '..', '..', 'data')
+fig_file_path = os.path.join(script_dir, '..', '..', 'results', 'figures')
 
 
 # %% ================================= #
 # USE THE SAME FILE AS FOR HDDM FITS
 # ================================= #
 
-data = pd.read_csv(os.path.join(data_file_path, 'ibl_trainingChoiceWorld_raw_20250310.csv'))
+# Set dataset name to match figure1a
+dataset = 'ibl_trainingChoiceWorld_raw_20250310'
+data = pd.read_csv(os.path.join(data_file_path, '%s.csv'%dataset))
+
+print(f"Original data shape: {data.shape}")
+
+# Create next trial columns BEFORE RT exclusions to maintain trial continuity
+data['nextresp'] = data.response.shift(-1)
+data['nextfb'] = data.correct.shift(-1)
+data['nextcontrast'] = np.abs(data.signed_contrast.shift(-1))
+
+# Remove when not consecutive based on trial_index
+trials_not_consecutive = (data.trialnum - data.trialnum.shift(-1)) != -1
+for col in ['nextresp', 'nextfb', 'nextcontrast']:
+    data.loc[trials_not_consecutive, col] = np.nan
+
+# Apply the same RT exclusions as in mouse analysis
+data = data.dropna(subset=['rt', 'response', 'signed_contrast', 'movement_onset'])
+print(f"After removing NaN values: {data.shape}")
+
+# Apply RT and movement onset exclusions
+print(f"Before RT exclusions: {data.shape}")
+data = data[(data['movement_onset'] < 5) & (data['rt'] < 5)]
+data = data[(data['movement_onset'] > 0.08) & (data['rt'] > 0.08)]
+print(f"After RT exclusions: {data.shape}")
+print(f"Number of subjects: {data.subj_idx.nunique()}")
+
 data.head(n=10)
+
+# Remap prevresp from 0/1 to -1/1 format expected by the analysis
+print(f"Original prevresp values: {sorted([x for x in data['prevresp'].unique() if not pd.isna(x)])}")
+data['prevresp'] = data['prevresp'].map({0: -1, 1: 1})
+print(f"Remapped prevresp values: {sorted([x for x in data['prevresp'].unique() if not pd.isna(x)])}")
+
+# Also remap nextresp to match -1/1 format
+data['nextresp'] = data['nextresp'].map({0: -1, 1: 1})
 
 # %% ================================= #
 # DEFINE HISTORY SHIFT FOR LAG 1
@@ -76,10 +110,11 @@ pars2 = pars2[(pars2.signed_contrast == 0)]
 pars3 = pd.pivot_table(pars2, values='response',
                        index=['subj_idx', 'previous_outcome'],
                        columns=['previous_choice']).reset_index()
-pars3['history_shift'] = pars3[1.0] - pars3[0.0]
+pars3['history_shift'] = pars3[1.0] - pars3[-1.0]
 pars4 = pd.pivot_table(pars3, values='history_shift',
                        index=['subj_idx'],
                        columns=['previous_outcome']).reset_index()
+print("pars4 columns:", pars4.columns.tolist())
 print(pars4.describe())
 
 # %%
@@ -89,7 +124,7 @@ print(pars4.describe())
 
 plt.close('all')
 fig, ax = plt.subplots(1, 1, figsize=[3.5, 3.5])
-sns.scatterplot(x=pars4[1.], y=pars4[-1.], alpha=0.8, color='grey', ax=ax, legend=False)
+sns.scatterplot(x=pars4[1.0], y=pars4[0.0], alpha=0.8, color='grey', ax=ax, legend=False)
 ax.set_xlabel("History dependence after correct\n($\Delta$ rightward choice (%) at 0% contrast)")
 ax.set_ylabel("History dependence after error\n($\Delta$ rightward choice (%) at 0% contrast)")
 ax.set(xticks=[-20, 0, 20, 40, 60], yticks=[-20, 0, 20, 40, 60])
@@ -98,7 +133,7 @@ sns.despine(trim=True)
 ax.axhline(linestyle=':', color='darkgrey')
 ax.axvline(linestyle=':', color='darkgrey')
 fig.tight_layout()
-fig.savefig(os.path.join(fig_file_path, "history_strategy.png"))
+fig.savefig(os.path.join(fig_file_path, "%s_history_strategy.png"%dataset))
 plt.close("all")
 print('strategy space')
 
@@ -147,7 +182,7 @@ pars2 = pars2[(pars2.signed_contrast == 0)]
 pars3 = pd.pivot_table(pars2, values='response',
                        index=['subj_idx', 'previous_outcome', 'previous_contrast'],
                        columns=['previous_choice']).reset_index()
-pars3['history_shift'] = pars3[1.0] - pars3[0.0]
+pars3['history_shift'] = pars3[1.0] - pars3[-1.0]
 # move the 100% closer
 pars3['previous_contrast'] = pars3.previous_contrast * 100
 pars3.loc[pars3.previous_contrast == 100, 'previous_contrast'] = 40
@@ -195,7 +230,7 @@ pars2 = pars2[(pars2.signed_contrast == 0)]
 pars4 = pd.pivot_table(pars2, values='response',
                        index=['subj_idx', 'next_outcome', 'next_contrast'],
                        columns=['next_choice']).reset_index()
-pars4['future_shift'] = pars4[1.0] - pars4[0.0]
+pars4['future_shift'] = pars4[1.0] - pars4[-1.0]
 
 pars4['previous_outcome'] = pars4.next_outcome
 pars4['previous_contrast'] = pars4.next_contrast
@@ -247,5 +282,5 @@ ax[1].set(ylabel='$\Delta$ Choice bias (%)',
 sns.despine(trim=True)
 fig.tight_layout()
 #fig.savefig(os.path.join(figpath, "history_prevcontrast.pdf"))
-fig.savefig(os.path.join(fig_file_path, "history_prevcontrast.png"))
+fig.savefig(os.path.join(fig_file_path, "%s_history_prevcontrast.png"%dataset))
 plt.close("all")

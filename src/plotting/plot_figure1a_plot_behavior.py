@@ -9,7 +9,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-import utils_plot as tools
+from ..utils import utils_plot as tools
 
 ## INITIALIZE A FEW THINGS
 tools.seaborn_style()
@@ -22,13 +22,25 @@ dataset = 'ibl_trainingChoiceWorld_raw_20250310'
 # dataset = 'visual_motion_2afc_fd'
 
 # Construct the path to the data file
-fig_folder_path = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM','results', 'figures')
-data_folder_path = os.path.join(script_dir, '..', '..', '2023_choicehistory_HSSM', 'data')
+fig_folder_path = os.path.join(script_dir, '..', '..', 'results', 'figures')
+data_folder_path = os.path.join(script_dir, '..', '..', 'data')
 
 #load data
 data = pd.read_csv(os.path.join(data_folder_path, '%s.csv'%dataset))
 if dataset == 'visual_motion_2afc_fd':
       data['signed_contrast'] = data['stimulus'] * data['coherence']
+
+# Clean data - remove NaN values in key columns first
+print(f"Original data shape: {data.shape}")
+data = data.dropna(subset=['rt', 'response', 'signed_contrast', 'movement_onset'])
+print(f"After removing NaN values: {data.shape}")
+
+# Apply RT and movement onset exclusions from mouse analysis
+print(f"Before RT exclusions: {data.shape}")
+data = data[(data['movement_onset'] < 5) & (data['rt'] < 5)]
+data = data[(data['movement_onset'] > 0.08) & (data['rt'] > 0.08)]
+print(f"After RT exclusions: {data.shape}")
+print(f"Number of subjects: {data.subj_idx.nunique()}")
 
 # %% ================================= #
 # REGULAR PSYCHFUNCS
@@ -77,48 +89,12 @@ ax.set_title('RT distributions')
 fig.savefig(os.path.join(fig_folder_path, "%s_rtdist.png"%dataset), dpi=300)
 
 # %% ================================= #
-# DISTRIBUTION OF RESULTING RTS after cutoff
-# ================================= #
-
-rt_cutoff = [data['rt'].min(), data['rt'].max()] # read in the values that have already been defined in the get_ibl_data script
-if data['rt_raw'].min() < rt_cutoff[0] and data['rt_raw'].max() > rt_cutoff[1]:
-        # make strings for bin labels based on rt_cutoff values
-        bin_labels = ['< %.2fs'%(rt_cutoff[0]), 
-                '%.2fs - %ds'%((rt_cutoff[0]), int(rt_cutoff[1])), 
-                '> %ds'%int(rt_cutoff[1])]
-        data['rt_raw_category'] = pd.cut(data['rt_raw'], 
-                                        bins=[data.rt_raw.min(), rt_cutoff[0], rt_cutoff[1], data.rt_raw.max()],
-                                        labels=bin_labels, right=True)
-else:
-        data['rt_raw_category'] = pd.cut(data['rt_raw'], 
-                                        bins=[data.rt_raw.min(), data.rt_raw.max()], right=True)
-
-# squash for easier plotting - to show all slow trials as 1 bin 
-data.loc[data.rt_raw > rt_cutoff[1], 'rt_raw'] = rt_cutoff[1] 
-# use FacetGrid to ensure the same figure size (approximately)
-fig = sns.FacetGrid(data)
-for axidx, ax in enumerate(fig.axes.flat):
-        sns.histplot(data, x="rt_raw", hue='rt_raw_category',common_bins=True,
-                palette=['lightgrey', 'darkblue', 'lightgrey'], legend=False, ax=ax)
-        ax.set(xlabel='RT (s)', xlim=[-0.1, rt_cutoff[1] + 0.05], 
-                yticklabels=[],
-                title='RT exclusion')
-sns.despine(trim=True)
-# annotate: how many trials are below the lower cutoff, and how many are above the higher cutoff?
-percent_below = (data.rt_raw < rt_cutoff[0]).mean() * 100
-percent_above = (data.rt_raw >= rt_cutoff[1]).mean() * 100
-plt.annotate('%d%%'%percent_below, xy=(rt_cutoff[0]/2, 2000), ha='center', fontsize=7)
-plt.annotate('%d%%'%percent_above, xy=(rt_cutoff[1]-0.1, 3000), ha='center', fontsize=7)
-fig.savefig(os.path.join(fig_folder_path, "%s_rtdist_cleaned.png"%dataset), dpi=300)
-
-# %% ================================= #
 # RT distributions per subject
 # ================================= #
 
 fig = sns.FacetGrid(data, col="subj_idx", col_wrap=np.ceil(np.sqrt(data.subj_idx.nunique())).astype(int),
                         sharex=True, sharey=False)
-fig.map(sns.histplot, "rt_raw", binwidth=0.05, element='step', color='darkblue')
-fig.map(sns.histplot, "rt", binwidth=0.05, element='step', color='red')
+fig.map(sns.histplot, "rt", binwidth=0.05, element='step', color='darkblue')
 fig.savefig(os.path.join(fig_folder_path, "%s_rtdist_allsj.png"%dataset), dpi=300)
 
 # %% ================================= #
