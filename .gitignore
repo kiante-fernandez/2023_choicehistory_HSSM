@@ -206,3 +206,9 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 .DS_Store
+
+# Old code folder (not tracked)
+old_code/
+
+# Old results folder (not tracked)
+old_results_untracked/

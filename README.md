@@ -18,9 +18,18 @@ Mice are increasingly used to study the neural circuit-level basis of behavior, 
 
 ## Repository Contents
 - `data/` - Datasets used in the study.
-- `src/` - Source code for models and analysis.
+- `src/` - Source code organized by functionality:
+  - `analysis/` - Main analysis scripts including the core mouse choice history analysis
+  - `plotting/` - Figure generation scripts for publication
+  - `utils/` - Utility functions for HSSM models and plotting
+  - `data_processing/` - Data retrieval and preprocessing scripts
+  - `archive/` - Archived code from previous experiments
+- `results/` - Organized analysis outputs:
+  - `models/` - Saved model files (.nc format)
+  - `figures/` - Generated plots and visualizations
+  - `summaries/` - CSV summary files and model comparisons
+  - `archive/` - Archived results from previous experiments
 - `docs/` - Additional documentation and supplementary materials.
-- `results/` - Results and visualizations from the analysis.
 
 ## Getting Started
 
@@ -44,13 +53,21 @@ Mice are increasingly used to study the neural circuit-level basis of behavior, 
 
 2. Execute the analysis scripts in Python:
    ```python
-   get_data.py # Retrieves data from IBL public server
-   preprocess_data.py # Selects suitable RTs
-   figure1a_plot_behavior.py # Plots basic data insights
-   figure1b_choice_history.py # Fits psychometric functions with history terms
-   figure1c_history_strategy.py
-   estimate_mouse_choice_history_ddm.py #estimates selected SSMs from data
-   figure4_posterior_choice_history.py # Plots diagnostic results from SSM estimation
+   # Data processing
+   python src/data_processing/get_ibl_data.py  # Retrieves data from IBL public server
+   
+   # Main analysis (START HERE)
+   python src/analysis/estimate_mouse_choice_history_ddm.py  # Core mouse choice history analysis
+   
+   # Figure generation
+   python src/plotting/plot_figure1a_plot_behavior.py  # Basic behavioral plots
+   python src/plotting/plot_figure1b_history_strategy.py  # Choice history analysis
+   python src/plotting/plot_figure2_drift_c_contrast.py  # Drift rate by contrast
+   python src/plotting/plot_figure3_drift_c.py  # Drift rate figures
+   python src/plotting/plot_figure4_posterior_choice_history.py  # Model diagnostics
+   
+   # Alternative analysis pipeline
+   python src/analysis/hssm_reproduce_choice_history_ddm.py  # HSSM reproduction analysis
    ```
 
 ### Contribute to the repo
