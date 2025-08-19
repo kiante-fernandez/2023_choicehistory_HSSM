@@ -77,16 +77,17 @@ fig.savefig(os.path.join(fig_folder_path, "%s_chronfuncs.png"%dataset), dpi=300)
 fig.savefig(os.path.join(fig_folder_path, "%s_chronfuncs.pdf"%dataset), dpi=300)
 
 # and RT distributions
-fig = sns.FacetGrid(data, hue="subj_idx", aspect=2)
-fig.map(sns.histplot, "rt", binwidth=0.05, element='step', fill=False,
+fig = sns.FacetGrid(data, hue="subj_idx", aspect=1.5)
+fig.map(sns.histplot, "rt", binwidth=0.02, element='step', fill=False,
         stat='probability',
         color='lightgray', alpha=0.7)
 for axidx, ax in enumerate(fig.axes.flat):
     sns.histplot(data, x='rt', ax=ax, element='step', fill=False,
-             stat='probability', binwidth=0.05, legend=False, color='darkblue', linewidth=2)
+             stat='probability', binwidth=0.02, legend=False, color='darkblue', linewidth=2)
     ax.set_xlim([0, 1.5])
 fig.despine(trim=True, offset=1)
 fig.set_axis_labels('RT (s)', ' ')
+fig.set_yticklabels('')
 #ax.set_title('RT distributions')
 fig.savefig(os.path.join(fig_folder_path, "%s_rtdist.png"%dataset), dpi=300)
 fig.savefig(os.path.join(fig_folder_path, "%s_rtdist.pdf"%dataset), dpi=300)
@@ -97,7 +98,7 @@ fig.savefig(os.path.join(fig_folder_path, "%s_rtdist.pdf"%dataset), dpi=300)
 
 fig = sns.FacetGrid(data, col="subj_idx", col_wrap=np.ceil(np.sqrt(data.subj_idx.nunique())).astype(int),
                         sharex=True, sharey=False)
-fig.map(sns.histplot, "rt", binwidth=0.05, element='step', color='darkblue')
+fig.map(sns.histplot, "rt", binwidth=0.01, element='step', color='darkblue')
 fig.savefig(os.path.join(fig_folder_path, "%s_rtdist_allsj.png"%dataset), dpi=300)
 fig.savefig(os.path.join(fig_folder_path, "%s_rtdist_allsj.pdf"%dataset), dpi=300)
 
