@@ -74,8 +74,8 @@ def make_model_centered(data, mname_full):
     nohist_spec = [
         {"name": "v", "formula": "v ~ 0 + (1 + signed_contrast | participant_id)", "link": "identity",
          "prior": {
-            "1|participant_id": {"name": "Normal", "mu": {"name": "Normal", "mu": 0.0, "sigma": 1.0}, "sigma": {"name": "HalfNormal", "sigma": 0.5}},
-            "signed_contrast|participant_id": {"name": "Normal", "mu": {"name": "Normal", "mu": 0.0, "sigma": 1.0}, "sigma": {"name": "HalfNormal", "sigma": 0.5}}
+            "1|participant_id": {"name": "Normal", "mu": {"name": "Normal", "mu": 0.0, "sigma": 0.5}, "sigma": {"name": "HalfNormal", "sigma": 0.2}},
+            "signed_contrast|participant_id": {"name": "Normal", "mu": {"name": "Normal", "mu": 0.0, "sigma": 0.5}, "sigma": {"name": "HalfNormal", "sigma": 0.2}}
          }},
         {"name": "z", "formula": "z ~ 0 + (1 | participant_id)", "link": "logit",
          "prior": {"1|participant_id": {"name": "Normal", "mu": {"name": "Normal", "mu": 0.0, "sigma": 0.3}, "sigma": {"name": "HalfNormal", "sigma": 0.5}}}},
@@ -132,7 +132,7 @@ def make_model_centered(data, mname_full):
         p_outlier={
             "formula": "p_outlier ~ 1 + (1 | participant_id)", "link": "logit",
             "prior": {
-                "Intercept": {"name": "Normal", "mu": -1.6, "sigma": 1.0},
+                "Intercept": {"name": "Normal", "mu": -2.3, "sigma": 1.0},
                 "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "HalfNormal", "sigma": 0.2}}
             }
         }
@@ -168,10 +168,10 @@ def make_model_noncentered(data, mname_full):
     nohist_spec = [
         {"name": "v", "formula": "v ~ 1 + signed_contrast + (1 + signed_contrast | participant_id)", "link": "identity",
          "prior": {
-            "Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1.0},
-            "signed_contrast": {"name": "Normal", "mu": 0.0, "sigma": 1.0},
-            "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "HalfNormal", "sigma": 0.5}},
-            "signed_contrast|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "HalfNormal", "sigma": 0.5}}
+            "Intercept": {"name": "Normal", "mu": 0.0, "sigma": 0.5},
+            "signed_contrast": {"name": "Normal", "mu": 0.0, "sigma": 0.5},
+            "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "HalfNormal", "sigma": 0.2}},
+            "signed_contrast|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "HalfNormal", "sigma": 0.2}}
          }},
         {"name": "z", "formula": "z ~ 1 + (1 | participant_id)", "link": "logit",
          "prior": {
