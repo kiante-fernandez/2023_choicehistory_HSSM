@@ -17,7 +17,7 @@ import bambi as bmb
 # Main Model Selection Function
 # =====================================================================================
 
-def make_model(data, mname_full, parameterization='noncentered'):
+def make_model(data, mname_full, parameterization='centered'):
     """
     Primary wrapper function to create an HSSM model.
 

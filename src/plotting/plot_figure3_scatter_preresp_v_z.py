@@ -256,7 +256,7 @@ def create_scatter_plot(z_data, v_data, model_name, output_path):
         
         # Set consistent limits
         ax.set_xlim(-2, 2)
-        ax.set_ylim(0.35, 0.65)
+        ax.set_ylim(0.50, 0.65)
         
         # Remove grid lines
         ax.grid(False)

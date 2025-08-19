@@ -102,7 +102,9 @@ def plot_traces_func(inference_data, modelname, mypath, timestamp):
 
 def run_model(data, modelname, mypath, trace_id=0, sampling_method="mcmc", plot_traces=True, 
              vi_niter=100000, vi_method="fullrank_advi", vi_optimizer="adamax", 
-             vi_learning_rate=0.01, **kwargs):
+             vi_learning_rate=0.01, vi_scheduler=None, scheduler_params=None,
+             vi_grad_clip=None, vi_convergence_tolerance=None, vi_convergence_every=None,
+             vi_min_iterations=None, **kwargs):
     """
     Run HSSM model with trace plotting and unique timestamped file naming.
     
@@ -128,6 +130,22 @@ def run_model(data, modelname, mypath, trace_id=0, sampling_method="mcmc", plot_
         Optimizer for VI: "adamax" (recommended), "adam", "adagrad", "sgd"
     vi_learning_rate : float, default=0.01
         Learning rate for VI optimizer (0.01 recommended for adamax)
+    vi_scheduler : str, optional
+        Learning rate scheduler type: "plateau", "step", "exponential", or None
+    scheduler_params : dict, optional
+        Parameters for the learning rate scheduler
+    vi_grad_clip : float, optional
+        Gradient clipping constraint to prevent exploding gradients (PyMC total_grad_norm_constraint)
+        Typical values: 1.0-5.0, or None to disable clipping
+    vi_convergence_tolerance : float, optional
+        Convergence tolerance for CheckParametersConvergence callback
+        Higher values (e.g., 0.01) are more lenient for noisy datasets. Default: 0.001
+    vi_convergence_every : int, optional
+        How often to check convergence (iterations). Higher values check less frequently.
+        Default: 100
+    vi_min_iterations : int, optional
+        Minimum iterations before convergence checking starts. Ensures models run at least
+        this many iterations before early stopping is allowed. Default: None
     **kwargs : dict
         Additional sampling parameters
         
@@ -247,27 +265,84 @@ def run_model(data, modelname, mypath, trace_id=0, sampling_method="mcmc", plot_
         # Run VI sampling
         # Configure VI optimizer based on HSSM best practices
         import pymc as pm
+        import pytensor
+        from .utils_hssm_schedulers import create_scheduler
         
-        # Set up optimizer with configurable parameters
+        # Create shared learning rate variable for scheduler support
+        learning_rate_shared = pytensor.shared(vi_learning_rate, name='learning_rate')
+        
+        # Set up optimizer with configurable parameters using shared learning rate
         if vi_optimizer.lower() == "adamax":
-            optimizer = pm.adamax(learning_rate=vi_learning_rate)
+            optimizer = pm.adamax(learning_rate=learning_rate_shared)
         elif vi_optimizer.lower() == "adam":
-            optimizer = pm.adam(learning_rate=vi_learning_rate)
+            optimizer = pm.adam(learning_rate=learning_rate_shared)
         elif vi_optimizer.lower() == "adagrad":
-            optimizer = pm.adagrad(learning_rate=vi_learning_rate)
+            optimizer = pm.adagrad(learning_rate=learning_rate_shared)
         elif vi_optimizer.lower() == "sgd":
-            optimizer = pm.sgd(learning_rate=vi_learning_rate)
+            optimizer = pm.sgd(learning_rate=learning_rate_shared)
         else:
             print(f"Warning: Optimizer '{vi_optimizer}' not recognized, using adamax (recommended)")
-            optimizer = pm.adamax(learning_rate=vi_learning_rate)
+            optimizer = pm.adamax(learning_rate=learning_rate_shared)
         
-        print(f"Running VI with {vi_niter} iterations, method: {vi_method}, optimizer: {vi_optimizer}, lr: {vi_learning_rate}")
+        # Set up callbacks with configurable convergence checking
+        convergence_tolerance = vi_convergence_tolerance if vi_convergence_tolerance is not None else 0.001
+        convergence_every = vi_convergence_every if vi_convergence_every is not None else 100
+        min_iterations = vi_min_iterations if vi_min_iterations is not None else 0
+        
+        # Create a custom convergence checker that respects minimum iterations
+        class MinIterationCheckParametersConvergence(CheckParametersConvergence):
+            def __init__(self, min_iter, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self.min_iter = min_iter
+                
+            def __call__(self, approx, loss_hist, i):
+                # Only check convergence after minimum iterations
+                if i >= self.min_iter:
+                    super().__call__(approx, loss_hist, i)
+        
+        callbacks = [MinIterationCheckParametersConvergence(
+            min_iterations,
+            diff='absolute',
+            tolerance=convergence_tolerance,
+            every=convergence_every
+        )]
+        
+        print(f"Convergence check: tolerance={convergence_tolerance}, every={convergence_every} iterations, min_iter={min_iterations}")
+        
+        # Add learning rate scheduler if specified
+        scheduler_callback = None
+        if vi_scheduler is not None:
+            if scheduler_params is None:
+                scheduler_params = {}
+            
+            try:
+                scheduler_callback = create_scheduler(vi_scheduler, learning_rate_shared, **scheduler_params)
+                callbacks.append(scheduler_callback)
+                print(f"Using {vi_scheduler} learning rate scheduler with params: {scheduler_params}")
+            except Exception as e:
+                print(f"Warning: Could not create scheduler '{vi_scheduler}': {e}")
+                print("Continuing without scheduler...")
+        
+        # Set up VI kwargs with optional gradient clipping
+        vi_kwargs = {
+            "niter": vi_niter,
+            "method": vi_method,
+            "obj_optimizer": optimizer,
+            "callbacks": callbacks
+        }
+        
+        # Add gradient clipping if specified
+        if vi_grad_clip is not None:
+            vi_kwargs["total_grad_norm_constraint"] = vi_grad_clip
+            grad_clip_info = f"grad_clip: {vi_grad_clip}"
+        else:
+            grad_clip_info = "no grad_clip"
+        
+        scheduler_info = f"scheduler: {vi_scheduler}" if vi_scheduler else "no scheduler"
+        print(f"Running VI with {vi_niter} iterations, method: {vi_method}, optimizer: {vi_optimizer}, lr: {vi_learning_rate}, {scheduler_info}, {grad_clip_info}")
         
         # Run VI with configurable parameters and convergence monitoring
-        m.vi(niter=vi_niter, 
-             method=vi_method, 
-             obj_optimizer=optimizer,
-             callbacks=[CheckParametersConvergence(diff='absolute')])
+        m.vi(**vi_kwargs)
         
         # Sample from VI approximation
         m.vi_approx.sample(draws=1000)
@@ -275,19 +350,58 @@ def run_model(data, modelname, mypath, trace_id=0, sampling_method="mcmc", plot_
         #az_data = az.from_pymc3(vi_samples)
         
         # Save the VI loss history plot for convergence diagnostics
-        plt.figure(figsize=(10, 6))
-        plt.plot(m.vi_approx.hist)
-        plt.xlabel('Iteration')
-        plt.ylabel('Loss')
-        plt.title(f'VI Loss History - {modelname}\n'
-                 f'Final Loss: {m.vi_approx.hist[-1]:.2f} | '
-                 f'Optimizer: {vi_optimizer} (lr={vi_learning_rate})')
-        plt.grid(True, alpha=0.3)
-        hist_file = os.path.join(traces_dir, f'{modelname}_{timestamp}_vi_loss_hist.png')
-        plt.savefig(hist_file, dpi=150, bbox_inches='tight')
-        plt.close()
-        print(f'VI loss history saved: {hist_file}')
-        print(f'Final VI loss: {m.vi_approx.hist[-1]:.2f}')
+        if scheduler_callback is not None and hasattr(scheduler_callback, 'get_lr_history'):
+            # Create dual-axis plot with loss and learning rate
+            fig, ax1 = plt.subplots(figsize=(12, 8))
+            
+            # Plot loss history
+            color = 'tab:blue'
+            ax1.set_xlabel('Iteration')
+            ax1.set_ylabel('Loss', color=color)
+            ax1.plot(m.vi_approx.hist, color=color)
+            ax1.tick_params(axis='y', labelcolor=color)
+            ax1.grid(True, alpha=0.3)
+            
+            # Plot learning rate history
+            ax2 = ax1.twinx()
+            color = 'tab:red'
+            ax2.set_ylabel('Learning Rate', color=color)
+            lr_history = scheduler_callback.get_lr_history()
+            if len(lr_history) > 0:
+                ax2.plot(lr_history, color=color, alpha=0.7)
+                ax2.tick_params(axis='y', labelcolor=color)
+                ax2.set_yscale('log')  # Log scale for learning rate
+            
+            plt.title(f'VI Loss & Learning Rate - {modelname}\n'
+                     f'Final Loss: {m.vi_approx.hist[-1]:.2f} | '
+                     f'Final LR: {learning_rate_shared.get_value():.2e} | '
+                     f'Optimizer: {vi_optimizer} | Scheduler: {vi_scheduler}')
+            
+            fig.tight_layout()
+            hist_file = os.path.join(traces_dir, f'{modelname}_{timestamp}_vi_loss_lr_hist.png')
+            plt.savefig(hist_file, dpi=150, bbox_inches='tight')
+            plt.close()
+            
+            print(f'VI loss & LR history saved: {hist_file}')
+            print(f'Final VI loss: {m.vi_approx.hist[-1]:.2f}')
+            print(f'Final learning rate: {learning_rate_shared.get_value():.2e}')
+            
+        else:
+            # Standard single-axis loss plot
+            plt.figure(figsize=(10, 6))
+            plt.plot(m.vi_approx.hist)
+            plt.xlabel('Iteration')
+            plt.ylabel('Loss')
+            final_lr = learning_rate_shared.get_value()
+            plt.title(f'VI Loss History - {modelname}\n'
+                     f'Final Loss: {m.vi_approx.hist[-1]:.2f} | '
+                     f'LR: {final_lr:.2e} | Optimizer: {vi_optimizer}')
+            plt.grid(True, alpha=0.3)
+            hist_file = os.path.join(traces_dir, f'{modelname}_{timestamp}_vi_loss_hist.png')
+            plt.savefig(hist_file, dpi=150, bbox_inches='tight')
+            plt.close()
+            print(f'VI loss history saved: {hist_file}')
+            print(f'Final VI loss: {m.vi_approx.hist[-1]:.2f}')
         # Extract and save summary statistics
         print("saving summary stats")
         results = az.summary(m.vi_idata).reset_index()
