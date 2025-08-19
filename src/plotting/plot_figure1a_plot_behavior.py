@@ -25,7 +25,6 @@ fig_folder_path = os.path.join(script_dir, '..', '..', 'results', 'figures')
 data_folder_path = os.path.join(script_dir, '..', '..', 'data')
 
 # Construct the path to the data file
-dataset = 'ibl_trainingChoiceWorld_20250310'
 dataset = 'ibl_trainingChoiceWorld_20250819'
 # dataset = 'visual_motion_2afc_fd'
 

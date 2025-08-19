@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 # Data configuration
-DATA_PATH = Path('/Users/kiante/Documents/2023_choicehistory_HSSM/data/ibl_trainingChoiceWorld_raw_20250310.csv')
+DATA_PATH = Path('/Users/kiante/Documents/2023_choicehistory_HSSM/data/ibl_trainingChoiceWorld_20250819.csv')
 MAX_TRIALS_PER_SESSION = 350
 MIN_TRIALS_FOR_ANALYSIS = 100
 MAX_RT = 5.0
@@ -56,27 +56,29 @@ MIN_MOVEMENT_ONSET = 0.08
 # Model configuration - All 8 model variants
 MODELS_TO_FIT = ['ddma', 'ddmb', 'ddmc', 'ddmd', 'anglea', 'angleb', 'anglec', 'angled']
 SAMPLING_CONFIG = {
+    'sampler': 'nuts_numpyro',
     'draws': 200,
-    'tune': 1000,
+    'tune': 500,
     'chains': 3,
     'cores': 3,
-    'target_accept': 0.95
+    # 'target_accept': 0.90
 }
 
 # Mice to exclude from analysis
-EXCLUDED_MICE = [
-    'CSHL059', 'CSHL060', 'CSHL_015', 'CSH_ZAD_017', 'DY_018', 
-    'KS043', 'KS044', 'KS045', 'KS046', 'KS086', 'KS091', 'MFD_07', 
-    'NR_0020', 'NYU-47', 'PL015', 'PL016', 'PL037', 'PL050', 'SWC_022', 
-    'SWC_038', 'SWC_058', 'UCLA033', 'UCLA048', 'ZFM-01577', 'ZM_1898',
-    'PL024', 'PL031', 'SWC_021', 'ZFM-01935', 'ZFM-04308', 'CSHL045', 
-    'CSHL052', 'CSH_ZAD_022', 'CSH_ZAD_024', 'DY_008', 'DY_020', 'NR_0027',
-    'CSHL049', 'CSHL053', 'CSHL047', 'KS017', 'KS094', 'NR_0019', 'ZM_2245', 
-    'ibl_witten_27', 'DY_014', 'KS084', 'NYU-11', 'NYU-37', 'SWC_061', 
-    'UCLA011', 'UCLA014', 'ZFM-02369', 'ibl_witten_14', 'ibl_witten_16',
-    'CSHL054', 'SWC_053', 'SWC_054', 'UCLA017', 'ZFM-01592', 'UCLA017', 
-    'ibl_witten_13', 'SWC_066'
-]
+# EXCLUDED_MICE = [
+#     'CSHL059', 'CSHL060', 'CSHL_015', 'CSH_ZAD_017', 'DY_018', 
+#     'KS043', 'KS044', 'KS045', 'KS046', 'KS086', 'KS091', 'MFD_07', 
+#     'NR_0020', 'NYU-47', 'PL015', 'PL016', 'PL037', 'PL050', 'SWC_022', 
+#     'SWC_038', 'SWC_058', 'UCLA033', 'UCLA048', 'ZFM-01577', 'ZM_1898',
+#     'PL024', 'PL031', 'SWC_021', 'ZFM-01935', 'ZFM-04308', 'CSHL045', 
+#     'CSHL052', 'CSH_ZAD_022', 'CSH_ZAD_024', 'DY_008', 'DY_020', 'NR_0027',
+#     'CSHL049', 'CSHL053', 'CSHL047', 'KS017', 'KS094', 'NR_0019', 'ZM_2245', 
+#     'ibl_witten_27', 'DY_014', 'KS084', 'NYU-11', 'NYU-37', 'SWC_061', 
+#     'UCLA011', 'UCLA014', 'ZFM-02369', 'ibl_witten_14', 'ibl_witten_16',
+#     'CSHL054', 'SWC_053', 'SWC_054', 'UCLA017', 'ZFM-01592', 'UCLA017', 
+#     'ibl_witten_13', 'SWC_066'
+# ]
+EXCLUDED_MICE = ['']
 
 # Output directory configuration
 PROJECT_ROOT = Path('/Users/kiante/Documents/2023_choicehistory_HSSM')
@@ -135,25 +137,21 @@ def preprocess_mouse_data(mouse_data: pd.DataFrame, mouse_id: str) -> Optional[p
     # Get data for this mouse
     mouse_subset = mouse_data[mouse_data['subj_idx'] == mouse_id].copy()
     
-    # Basic preprocessing
-    valid_data = mouse_subset.dropna(subset=['movement_onset', 'rt', 'prevresp', 'signed_contrast', 'response'])
-    valid_data = valid_data[
-        (valid_data['movement_onset'] < MAX_MOVEMENT_ONSET) & 
-        (valid_data['rt'] < MAX_RT) &
-        (valid_data['movement_onset'] > MIN_MOVEMENT_ONSET) & 
-        (valid_data['rt'] > MIN_RT)
-    ]
+    # Basic preprocessing - filter for valid trials
+    valid_data = mouse_subset[
+        (mouse_subset['movement_onset'] < MAX_MOVEMENT_ONSET) & 
+        (mouse_subset['rt'] < MAX_RT) &
+        (mouse_subset['movement_onset'] > MIN_MOVEMENT_ONSET) & 
+        (mouse_subset['rt'] > MIN_RT)
+    ].copy()
     
-    # Recode response to be -1 and 1 rather than 0 and 1
+    # Recode response to be -1 and 1 rather than 0 and 1 (HSSM requirement)
     valid_data['response'] = valid_data['response'].replace({0: -1, 1: 1})
-    valid_data['prevresp'] = valid_data['prevresp'].replace({0: -1, 1: 1})
+    # prevresp is already correctly encoded as -1 and 1
     
-    # Create scaled signed contrast (following hierarchical script pattern)
-    # Clip and divide by 100 to preserve original contrast values while scaling appropriately
-    valid_data['squeezed_signed_contrast'] = valid_data['signed_contrast'].clip(upper=25, lower=-25)
-    valid_data['scaled_signed_contrast'] = valid_data['squeezed_signed_contrast'] / 100
-    valid_data['signed_contrast'] = valid_data['scaled_signed_contrast']
-    
+    # Use the pre-computed signed_contrast_squeezed column
+    valid_data['signed_contrast'] = valid_data['signed_contrast_squeezed']
+
     # Create categorical variable for previous response
     valid_data['prevresp_cat'] = valid_data['prevresp'].map({-1.0: 'prev_left', 1.0: 'prev_right'})
     valid_data['prevresp_cat'] = valid_data['prevresp_cat'].astype('category')
@@ -302,8 +300,8 @@ def create_mouse_specific_models(valid_data: pd.DataFrame) -> Dict[str, Any]:
                 model=base_model,
                 loglik_kind="approx_differentiable",
                 include=include_specs,
-                lapse=lapse,
-                p_outlier=p_outlier
+                lapse=None,
+                p_outlier=None
             )
             
             logger.info(f"Created {model_name} model successfully")
@@ -329,7 +327,7 @@ def get_default_init_values(model_name: str = None) -> Dict[str, np.ndarray]:
     base_init = {
         'a': np.array(1.0),              # boundary separation
         't': np.array(0.1),              # non-decision time
-        'p_outlier': np.array(0.05),     # outlier probability
+        # 'p_outlier': np.array(0.05),     # outlier probability
     }
     
     # Only include theta for angle models
