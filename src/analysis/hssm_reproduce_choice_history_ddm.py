@@ -164,4 +164,36 @@ sampling_params = {
 }
 
 # Sample from the posterior for each model
-model_run_results = {name: run_model(mouse_data_subset, name, script_dir, **sampling_params) for name in model_names}
+#model_run_results = {name: run_model(mouse_data_subset, name, script_dir, **sampling_params) for name in model_names}
+# %% Run Variational Inference (VI)
+print("\n" + "="*60)
+print("RUNNING VARIATIONAL INFERENCE")
+print("="*60)
+
+# VI configuration parameters
+vi_config = {
+    "vi_niter": 100000,  # Increased for better convergence
+    "vi_method": "fullrank_advi",  # Recommended method
+    "vi_optimizer": "adamax",  # Recommended optimizer
+    "vi_learning_rate": 0.001,  # Recommended learning rate for adamax
+}
+
+print(f"VI Configuration:")
+for key, value in vi_config.items():
+    print(f"  {key}: {value}")
+print()
+
+# Run VI for each model
+vi_results = {}
+for i, name in enumerate(model_names, 1):
+    print(f"Running VI for model {i}/{len(model_names)}: {name}")
+    vi_results[name] = run_model(
+        mouse_data_subset, 
+        name, 
+        script_dir, 
+        sampling_method="vi",
+        **vi_config
+    )
+    print(f"Completed VI for {name}\n")
+
+print("All VI runs completed!")

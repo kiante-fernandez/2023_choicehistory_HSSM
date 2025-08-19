@@ -100,7 +100,9 @@ def plot_traces_func(inference_data, modelname, mypath, timestamp):
         plt.close('all')
 
 
-def run_model(data, modelname, mypath, trace_id=0, sampling_method="mcmc", plot_traces=True, **kwargs):
+def run_model(data, modelname, mypath, trace_id=0, sampling_method="mcmc", plot_traces=True, 
+             vi_niter=100000, vi_method="fullrank_advi", vi_optimizer="adamax", 
+             vi_learning_rate=0.01, **kwargs):
     """
     Run HSSM model with trace plotting and unique timestamped file naming.
     
@@ -118,6 +120,14 @@ def run_model(data, modelname, mypath, trace_id=0, sampling_method="mcmc", plot_
         Sampling method: "mcmc" or "vi"
     plot_traces : bool, default=True
         Whether to generate and save trace plots
+    vi_niter : int, default=100000
+        Number of iterations for VI (when sampling_method="vi")
+    vi_method : str, default="fullrank_advi"
+        VI method: "advi" or "fullrank_advi" (recommended)
+    vi_optimizer : str, default="adamax"
+        Optimizer for VI: "adamax" (recommended), "adam", "adagrad", "sgd"
+    vi_learning_rate : float, default=0.01
+        Learning rate for VI optimizer (0.01 recommended for adamax)
     **kwargs : dict
         Additional sampling parameters
         
@@ -235,18 +245,49 @@ def run_model(data, modelname, mypath, trace_id=0, sampling_method="mcmc", plot_
     elif sampling_method == "vi":
         import arviz as az
         # Run VI sampling
-        vi_approx = m.vi(niter=60000,method="fullrank_advi", callbacks=[CheckParametersConvergence(diff='absolute')])
-        vi_samples = m.vi_approx.sample(draws=1000)
+        # Configure VI optimizer based on HSSM best practices
+        import pymc as pm
+        
+        # Set up optimizer with configurable parameters
+        if vi_optimizer.lower() == "adamax":
+            optimizer = pm.adamax(learning_rate=vi_learning_rate)
+        elif vi_optimizer.lower() == "adam":
+            optimizer = pm.adam(learning_rate=vi_learning_rate)
+        elif vi_optimizer.lower() == "adagrad":
+            optimizer = pm.adagrad(learning_rate=vi_learning_rate)
+        elif vi_optimizer.lower() == "sgd":
+            optimizer = pm.sgd(learning_rate=vi_learning_rate)
+        else:
+            print(f"Warning: Optimizer '{vi_optimizer}' not recognized, using adamax (recommended)")
+            optimizer = pm.adamax(learning_rate=vi_learning_rate)
+        
+        print(f"Running VI with {vi_niter} iterations, method: {vi_method}, optimizer: {vi_optimizer}, lr: {vi_learning_rate}")
+        
+        # Run VI with configurable parameters and convergence monitoring
+        m.vi(niter=vi_niter, 
+             method=vi_method, 
+             obj_optimizer=optimizer,
+             callbacks=[CheckParametersConvergence(diff='absolute')])
+        
+        # Sample from VI approximation
+        m.vi_approx.sample(draws=1000)
 
         #az_data = az.from_pymc3(vi_samples)
         
-        # Save the VI samples
-        #m.to_netcdf(os.path.join(mypath, f'{modelname}_model.nc'))
+        # Save the VI loss history plot for convergence diagnostics
+        plt.figure(figsize=(10, 6))
         plt.plot(m.vi_approx.hist)
+        plt.xlabel('Iteration')
+        plt.ylabel('Loss')
+        plt.title(f'VI Loss History - {modelname}\n'
+                 f'Final Loss: {m.vi_approx.hist[-1]:.2f} | '
+                 f'Optimizer: {vi_optimizer} (lr={vi_learning_rate})')
+        plt.grid(True, alpha=0.3)
         hist_file = os.path.join(traces_dir, f'{modelname}_{timestamp}_vi_loss_hist.png')
-        plt.savefig(hist_file)
+        plt.savefig(hist_file, dpi=150, bbox_inches='tight')
         plt.close()
         print(f'VI loss history saved: {hist_file}')
+        print(f'Final VI loss: {m.vi_approx.hist[-1]:.2f}')
         # Extract and save summary statistics
         print("saving summary stats")
         results = az.summary(m.vi_idata).reset_index()
