@@ -17,7 +17,7 @@ import bambi as bmb
 # Main Model Selection Function
 # =====================================================================================
 
-def make_model(data, mname_full, parameterization='centered'):
+def make_model(data, mname_full, parameterization='noncentered'):
     """
     Primary wrapper function to create an HSSM model.
 
@@ -66,7 +66,9 @@ def make_model_centered(data, mname_full):
     else:
         base_model, *mname_parts = mname_full.split('_')
         mname = "_".join(mname_parts)
-        spec_loglik_kind = "approx_differentiable"
+#        spec_loglik_kind = "approx_differentiable"
+        spec_loglik_kind = "analytical"
+
 
     print(f'Base model: {base_model}')
     print(f'Model name: {mname}')
@@ -74,15 +76,15 @@ def make_model_centered(data, mname_full):
     nohist_spec = [
         {"name": "v", "formula": "v ~ 0 + (1 + signed_contrast | participant_id)", "link": "identity",
          "prior": {
-            "1|participant_id": {"name": "Normal", "mu": {"name": "Normal", "mu": 0.0, "sigma": 0.5}, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.2}},
-            "signed_contrast|participant_id": {"name": "Normal", "mu": {"name": "Normal", "mu": 0.0, "sigma": 0.5}, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.2}}
+            "1|participant_id": {"name": "Normal", "mu": {"name": "Normal", "mu": 0.0, "sigma": 0.5}, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.3}},
+            "signed_contrast|participant_id": {"name": "Normal", "mu": {"name": "Normal", "mu": 0.0, "sigma": 0.5}, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.3}}
          }},
-        {"name": "z", "formula": "z ~ 0 + (1 | participant_id)", "link": "logit",
-         "prior": {"1|participant_id": {"name": "Normal", "mu": {"name": "Normal", "mu": 0.0, "sigma": 0.3}, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.5}}}},
-        {"name": "t", "formula": "t ~ 0 + (1 | participant_id)", "link": "log",
-         "prior": {"1|participant_id": {"name": "Normal", "mu": {"name": "Normal", "mu": -1.9, "sigma": 0.3}, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.3}}}},
-        {"name": "a", "formula": "a ~ 0 + (1 | participant_id)", "link": "log",
-         "prior": {"1|participant_id": {"name": "Normal", "mu": {"name": "Normal", "mu": -0.1, "sigma": 0.3}, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.5}}}}
+        {"name": "z", "formula": "z ~ 0 + (1 | participant_id)", "link": "identity",
+         "prior": {"1|participant_id": {"name": "Normal", "mu": {"name": "Beta", "alpha": 2, "beta": 2}, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.1}}}},
+        {"name": "t", "formula": "t ~ 0 + (1 | participant_id)", "link": "identity",
+         "prior": {"1|participant_id": {"name": "Normal", "mu": {"name": "Gamma", "alpha": 2, "beta": 10}, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.05}}}},
+        {"name": "a", "formula": "a ~ 0 + (1 | participant_id)", "link": "identity",
+         "prior": {"1|participant_id": {"name": "Normal", "mu": {"name": "Gamma", "alpha": 2, "beta": 2}, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.1}}}}
     ]
 
     model_specs = {
@@ -90,26 +92,26 @@ def make_model_centered(data, mname_full):
         'catnohist': [
             {"name": "v", "formula": "v ~ 0 + (1 + C(signed_contrast) | participant_id)", "link": "identity",
              "prior": {
-                "1|participant_id": {"name": "Normal", "mu": {"name": "Normal", "mu": 0.0, "sigma": 1.0}, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.5}},
-                "C(signed_contrast)|participant_id": {"name": "Normal", "mu": {"name": "Normal", "mu": 0.0, "sigma": 1.0}, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.5}}
+                "1|participant_id": {"name": "Normal", "mu": {"name": "Normal", "mu": 0.0, "sigma": 0.5}, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.3}},
+                "C(signed_contrast)|participant_id": {"name": "Normal", "mu": {"name": "Normal", "mu": 0.0, "sigma": 0.5}, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.3}}
              }},
             nohist_spec[1], nohist_spec[2], nohist_spec[3]
         ],
         'prevresp_v': [
             {"name": "v", "formula": "v ~ 0 + (1 + prevresp_cat + signed_contrast | participant_id)", "link": "identity",
              "prior": {
-                "1|participant_id": {"name": "Normal", "mu": {"name": "Normal", "mu": 0.0, "sigma": 1.0}, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.5}},
-                "prevresp_cat|participant_id": {"name": "Normal", "mu": {"name": "Normal", "mu": 0.0, "sigma": 1.0}, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.5}},
-                "signed_contrast|participant_id": {"name": "Normal", "mu": {"name": "Normal", "mu": 0.0, "sigma": 1.0}, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.5}}
+                "1|participant_id": {"name": "Normal", "mu": {"name": "Normal", "mu": 0.0, "sigma": 0.5}, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.3}},
+                "prevresp_cat|participant_id": {"name": "Normal", "mu": {"name": "Normal", "mu": 0.0, "sigma": 0.5}, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.3}},
+                "signed_contrast|participant_id": {"name": "Normal", "mu": {"name": "Normal", "mu": 0.0, "sigma": 0.5}, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.3}}
              }},
             nohist_spec[1], nohist_spec[2], nohist_spec[3]
         ],
         'prevresp_z': [
             nohist_spec[0],
-            {"name": "z", "formula": "z ~ 0 + (1 + prevresp_cat | participant_id)", "link": "logit",
+            {"name": "z", "formula": "z ~ 0 + (1 + prevresp_cat | participant_id)", "link": "identity",
              "prior": {
-                "1|participant_id": {"name": "Normal", "mu": {"name": "Normal", "mu": 0.0, "sigma": 0.3}, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.5}},
-                "prevresp_cat|participant_id": {"name": "Normal", "mu": {"name": "Normal", "mu": 0.0, "sigma": 0.5}, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.5}}
+                "1|participant_id": {"name": "Normal", "mu": {"name": "Beta", "alpha": 2, "beta": 2}, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.1}},
+                "prevresp_cat|participant_id": {"name": "Normal", "mu": {"name": "Normal", "mu": 0.0, "sigma": 0.05}, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.02}}
              }},
             nohist_spec[2], nohist_spec[3]
         ]
@@ -122,7 +124,7 @@ def make_model_centered(data, mname_full):
     if "angle" in base_model:
         current_model_spec.append({
             "name": "theta", "formula": "theta ~ 0 + (1 | participant_id)", "link": "identity",
-            "prior": {"1|participant_id": {"name": "Normal", "mu": {"name": "Normal", "mu": 0.0, "sigma": 0.5}, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.5}}}
+            "prior": {"1|participant_id": {"name": "Normal", "mu": {"name": "Normal", "mu": 0.0, "sigma": 0.5}, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.4}}}
         })
 
     return hssm.HSSM(
@@ -135,7 +137,7 @@ def make_model_centered(data, mname_full):
         #     "formula": "p_outlier ~ 1 + (1 | participant_id)", "link": "logit",
         #     "prior": {
         #         "Intercept": {"name": "Normal", "mu": -2.3, "sigma": 1.0},
-        #         "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "HalfNormal", "sigma": 0.2}}
+        #         "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "sigma": 0.2}}
         #     }
         # }
     )
@@ -162,7 +164,8 @@ def make_model_noncentered(data, mname_full):
     else:
         base_model, *mname_parts = mname_full.split('_')
         mname = "_".join(mname_parts)
-        spec_loglik_kind = "approx_differentiable"
+        #spec_loglik_kind = "approx_differentiable"
+        spec_loglik_kind = "analytical"
 
     print(f'Base model: {base_model}')
     print(f'Model name: {mname}')
@@ -172,23 +175,23 @@ def make_model_noncentered(data, mname_full):
          "prior": {
             "Intercept": {"name": "Normal", "mu": 0.0, "sigma": 0.5},
             "signed_contrast": {"name": "Normal", "mu": 0.0, "sigma": 0.5},
-            "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.2}},
-            "signed_contrast|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.2}}
+            "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.3}},
+            "signed_contrast|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.3}}
          }},
-        {"name": "z", "formula": "z ~ 1 + (1 | participant_id)", "link": "logit",
+        {"name": "z", "formula": "z ~ 1 + (1 | participant_id)", "link": "identity",
          "prior": {
-            "Intercept": {"name": "Normal", "mu": 0.0, "sigma": 0.3},
-            "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.5}}
+            "Intercept": {"name": "Beta", "alpha": 2, "beta": 2},
+            "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.1}}
          }},
-        {"name": "t", "formula": "t ~ 1 + (1 | participant_id)", "link": "log",
+        {"name": "t", "formula": "t ~ 1 + (1 | participant_id)", "link": "identity",
          "prior": {
-            "Intercept": {"name": "Normal", "mu": -1.9, "sigma": 0.3},
-            "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.3}}
+            "Intercept": {"name": "Gamma", "alpha": 2, "beta": 10},
+            "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.05}}
          }},
-        {"name": "a", "formula": "a ~ 1 + (1 | participant_id)", "link": "log",
+        {"name": "a", "formula": "a ~ 1 + (1 | participant_id)", "link": "identity",
          "prior": {
-            "Intercept": {"name": "Normal", "mu": -0.1, "sigma": 0.3},
-            "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.5}}
+            "Intercept": {"name": "Gamma", "alpha": 2, "beta": 2},
+            "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.1}}
          }}
     ]
 
@@ -197,33 +200,33 @@ def make_model_noncentered(data, mname_full):
         'catnohist': [
             {"name": "v", "formula": "v ~ 1 + C(signed_contrast) + (1 + C(signed_contrast) | participant_id)", "link": "identity",
              "prior": {
-                "Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1.0},
-                "C(signed_contrast)": {"name": "Normal", "mu": 0.0, "sigma": 1.0},
-                "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.5}},
-                "C(signed_contrast)|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.5}}
+                "Intercept": {"name": "Normal", "mu": 0.0, "sigma": 0.5},
+                "C(signed_contrast)": {"name": "Normal", "mu": 0.0, "sigma": 0.5},
+                "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.3}},
+                "C(signed_contrast)|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.3}}
              }},
             nohist_spec[1], nohist_spec[2], nohist_spec[3]
         ],
         'prevresp_v': [
             {"name": "v", "formula": "v ~ 1 + prevresp_cat + signed_contrast + (1 + prevresp_cat + signed_contrast | participant_id)", "link": "identity",
              "prior": {
-                "Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1.0},
-                "prevresp_cat": {"name": "Normal", "mu": 0.0, "sigma": 1.0},
-                "signed_contrast": {"name": "Normal", "mu": 0.0, "sigma": 1.0},
-                "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.5}},
-                "prevresp_cat|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.5}},
-                "signed_contrast|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.5}}
+                "Intercept": {"name": "Normal", "mu": 0.0, "sigma": 0.5},
+                "prevresp_cat": {"name": "Normal", "mu": 0.0, "sigma": 0.5},
+                "signed_contrast": {"name": "Normal", "mu": 0.0, "sigma": 0.5},
+                "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.3}},
+                "prevresp_cat|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.3}},
+                "signed_contrast|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.3}}
              }},
             nohist_spec[1], nohist_spec[2], nohist_spec[3]
         ],
         'prevresp_z': [
             nohist_spec[0],
-            {"name": "z", "formula": "z ~ 1 + prevresp_cat + (1 + prevresp_cat | participant_id)", "link": "logit",
+            {"name": "z", "formula": "z ~ 1 + prevresp_cat + (1 + prevresp_cat | participant_id)", "link": "identity",
              "prior": {
-                "Intercept": {"name": "Normal", "mu": 0.0, "sigma": 0.3},
-                "prevresp_cat": {"name": "Normal", "mu": 0.0, "sigma": 0.5},
-                "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.5}},
-                "prevresp_cat|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.5}}
+                "Intercept": {"name": "Beta", "alpha": 2, "beta": 2},
+                "prevresp_cat": {"name": "Normal", "mu": 0.0, "sigma": 0.05},
+                "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.1}},
+                "prevresp_cat|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.02}}
              }},
             nohist_spec[2], nohist_spec[3]
         ]
@@ -238,7 +241,7 @@ def make_model_noncentered(data, mname_full):
             "name": "theta", "formula": "theta ~ 1 + (1 | participant_id)", "link": "identity",
             "prior": {
                 "Intercept": {"name": "Normal", "mu": 0.0, "sigma": 0.5},
-                "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.5}}
+                "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.4}}
             }
         })
 
@@ -252,7 +255,7 @@ def make_model_noncentered(data, mname_full):
         #     "formula": "p_outlier ~ 1 + (1 | participant_id)", "link": "logit",
         #     "prior": {
         #         "Intercept": {"name": "Normal", "mu": -1.6, "sigma": 1.0},
-        #         "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "HalfNormal", "sigma": 0.2}}
+        #         "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "sigma": 0.2}}
         #     }
         # }
     )
