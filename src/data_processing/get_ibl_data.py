@@ -57,13 +57,13 @@ def compute_choice_history(trials):
     # trials['nextfb']        = trials.correct.shift(-1)
     # trials['nextcontrast']  = np.abs(trials.signed_contrast.shift(-1))
 
+    # add some more history measures
+    trials['repeat'] = np.where(trials.response == trials.prevresp, 1, 0)
+
     # remove when not consecutive based on trial_index
     trials_not_consecutive       = (trials.trialnum - trials.trialnum.shift(1)) != 1.
     for col in ['prevresp', 'prevfb', 'prevcontrast']:
         trials.loc[trials_not_consecutive, col] = np.nan
-
-    # add some more history measures
-    trials['repeat'] = np.where(trials.response == trials.prevresp, 1, 0)
 
     return trials
 
@@ -104,8 +104,8 @@ def squeeze_contrast(x):
     set all contrast levels >= 0.25 to 0.25
     """
 
-    x = np.where(x >= 0.25, x, 0.25)
-    x = np.where(x <= -0.25, x, -0.25)
+    x = np.where(x >= 0.25, 0.25, x)
+    x = np.where(x <= -0.25, -0.25, x)
     
     return x
 # %% FIRST, FIND SUBJECTS OF INTEREST
@@ -212,17 +212,9 @@ for subject in tqdm(subjects):
         trials['subj_idx'] = subject
         trials['eid'] = trials.index
 
-        # add choice history information
-        trials = compute_choice_history(trials)
-
         #  ============================================ #
         # QUALITY CONTROL
         #  ============================================ #
-
-        # Clean data - remove NaN values in key columns first
-        print(f"Original data shape: {trials.shape}")
-        trials = trials.dropna(subset=['rt', 'response', 'signed_contrast', 'movement_onset'])
-        print(f"After removing NaN values: {trials.shape}")
 
         # TODO: Add is_final_movement to trial selection: 
         # https://int-brain-lab.github.io/iblenv/notebooks_external/docs_wheel_moves.html#Finding-reaction-time-and-'determined'-movements
@@ -251,9 +243,17 @@ for subject in tqdm(subjects):
         # remove outlier RTs
         trials['rt'] = clean_rts(trials['rt'], [0.08, 5])
 
+        # add choice history information
+        trials = compute_choice_history(trials)
+
+        # Clean data - remove NaN values in key columns first
+        print(f"Original data shape: {trials.shape}")
+        trials = trials.dropna(subset=['rt', 'response', 'signed_contrast', 'movement_onset', 'prevresp'])
+        print(f"After removing NaN values: {trials.shape}")
+
         # check that we have > 400 trials in each session
         num_trials = trials.groupby(['session_start_time'])['trialnum'].count().reset_index()
-        try: assert all(num_trials['trialnum'] > 400)
+        try: assert all(num_trials['trialnum'] > 300)
         except: print('skipping %s, not enough trials '%subject); continue
 
         # # Check if we still have enough trials after RT exclusion
@@ -264,7 +264,7 @@ for subject in tqdm(subjects):
         
         # continue only with some columns we need
         trials = trials[['eid', 'subj_idx', 'session_start_time', 'signed_contrast', 
-                         'signed_contrast_scaled', 'signed_contrast_squeezed', 'prior_bias',
+                        'signed_contrast_squeezed', 'prior_bias',
          'response', 'rt', 'movement_onset', 'correct', 'trialnum', 
          'prevresp', 'prevfb', 'prevcontrast', 'repeat']]
 

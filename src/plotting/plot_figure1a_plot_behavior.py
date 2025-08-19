@@ -19,21 +19,24 @@ tools.seaborn_style()
 
 # Get the directory of the script being run
 script_dir = os.path.dirname(os.path.realpath(__file__))
-# Construct the path to the data file
-dataset = 'ibl_trainingChoiceWorld_20250310'
-dataset = 'ibl_trainingChoiceWorld_20250819'
-# dataset = 'visual_motion_2afc_fd'
 
 # Construct the path to the data file
 fig_folder_path = os.path.join(script_dir, '..', '..', 'results', 'figures')
 data_folder_path = os.path.join(script_dir, '..', '..', 'data')
+
+# Construct the path to the data file
+dataset = 'ibl_trainingChoiceWorld_20250310'
+dataset = 'ibl_trainingChoiceWorld_20250819'
+# dataset = 'visual_motion_2afc_fd'
 
 #load data
 data = pd.read_csv(os.path.join(data_folder_path, '%s.csv'%dataset))
 if dataset == 'visual_motion_2afc_fd':
       data['signed_contrast'] = data['stimulus'] * data['coherence']
 
-data['signed_contrast'] = data['signed_contrast'] * 100 # keep old
+# keep the scaling by 100 to match original y-axis for plotting
+data['signed_contrast'] = data['signed_contrast'] * 100 
+
 
 # %% ================================= #
 # REGULAR PSYCHFUNCS
@@ -47,9 +50,10 @@ for axidx, ax in enumerate(fig.axes.flat):
     tools.plot_psychometric(data.signed_contrast, data.response,
                       data.subj_idx, ax=ax, legend=False, color='darkblue', linewidth=2)
 fig.despine(trim=True)
-fig.set_axis_labels('Signed contrast (%)', 'Rightward choice (%)')
-ax.set_title('Psychometric function (n = %d)'%data.subj_idx.nunique())
-ax.set_title('Psychometric function')
+fig.set_axis_labels('Signed contrast (%)', 'Choice (% right)')
+#ax.set_title('Psychometric function (n = %d)'%data.subj_idx.nunique())
+#ax.set_title('Psychometric function')
+ax.text(20, .10, 'n = %d'%data.subj_idx.nunique())
 
 fig.savefig(os.path.join(fig_folder_path, "%s_psychfuncs.png"%dataset), dpi=300)
 fig.savefig(os.path.join(fig_folder_path, "%s_psychfuncs.pdf"%dataset), dpi=300)
@@ -66,14 +70,14 @@ for axidx, ax in enumerate(fig.axes.flat):
                       data.subj_idx, ax=ax, legend=False, color='darkblue', linewidth=2)
 fig.despine(trim=True)
 fig.set_axis_labels('Signed contrast (%)', 'RT (s)')
-ax.set_title('b. Chronometric function (n = %d)'%data.subj_idx.nunique())
-ax.set_title('Chronometric function')
+#ax.set_title('b. Chronometric function (n = %d)'%data.subj_idx.nunique())
+#ax.set_title('Chronometric function')
 
 fig.savefig(os.path.join(fig_folder_path, "%s_chronfuncs.png"%dataset), dpi=300)
 fig.savefig(os.path.join(fig_folder_path, "%s_chronfuncs.pdf"%dataset), dpi=300)
 
 # and RT distributions
-fig = sns.FacetGrid(data, hue="subj_idx")
+fig = sns.FacetGrid(data, hue="subj_idx", aspect=2)
 fig.map(sns.histplot, "rt", binwidth=0.05, element='step', fill=False,
         stat='probability',
         color='lightgray', alpha=0.7)
@@ -83,7 +87,7 @@ for axidx, ax in enumerate(fig.axes.flat):
     ax.set_xlim([0, 1.5])
 fig.despine(trim=True, offset=1)
 fig.set_axis_labels('RT (s)', ' ')
-ax.set_title('RT distributions')
+#ax.set_title('RT distributions')
 fig.savefig(os.path.join(fig_folder_path, "%s_rtdist.png"%dataset), dpi=300)
 fig.savefig(os.path.join(fig_folder_path, "%s_rtdist.pdf"%dataset), dpi=300)
 
@@ -102,9 +106,8 @@ fig.savefig(os.path.join(fig_folder_path, "%s_rtdist_allsj.pdf"%dataset), dpi=30
 # ================================= #
 
 data.head(n=10)
-if not 'prevfb' in data.columns:
-      data['prevfb'] = (data.prevresp == data.prevstim)
-      data['prevresp'] = data['prevresp'].map({-1: 0, 1: 1})
+#data['prevfb'] = (data.prevresp == data.prevstim)
+data['prevresp'] = data['prevresp'].map({-1: 0, 1: 1})
 data['previous_trial'] = 100*data.prevfb + 10*data.prevresp  # for color coding
 print(data.groupby(['previous_trial'])[['prevfb', 'prevresp']].mean().reset_index())
 cmap = sns.color_palette("Paired")
@@ -118,9 +121,9 @@ hue_order = [0., +100.,  +10., +110.]
 # plot one curve for each animal, one panel per lab
 fig = sns.FacetGrid(data, hue='previous_trial', palette=cmap, hue_order=hue_order)
 fig.map(tools.plot_psychometric, "signed_contrast", "response", "subj_idx")
-fig.set_axis_labels('Signed evidence (%)', 'Rightwards choice (%)')
-for axidx, ax in enumerate(fig.axes.flat):
-        ax.set_title('History bias')
+fig.set_axis_labels('Signed contrast (%)', 'Choice (% right)')
+#for axidx, ax in enumerate(fig.axes.flat):
+        #ax.set_title('History bias')
 fig.despine(trim=True)
 fig.savefig(os.path.join(fig_folder_path, "%s_psychfuncs_history.png"%dataset), dpi=300)
 fig.savefig(os.path.join(fig_folder_path, "%s_psychfuncs_history.pdf"%dataset), dpi=300)
@@ -132,8 +135,8 @@ fig = sns.FacetGrid(data, hue='previous_trial', palette=cmap, hue_order=hue_orde
 fig.map(tools.plot_chronometric, "signed_contrast", "rt", "subj_idx")
 fig.set_axis_labels('Signed contrast (%)', 'RT (s)')
 for axidx, ax in enumerate(fig.axes.flat):
-        ax.set_title('History-dependent chronometric')
-        # ax.set_ylim([0, 3])
+        #ax.set_title('History-dependent chronometric')
+        ax.set_ylim([0, 1])
 fig.despine(trim=True)
 fig.savefig(os.path.join(fig_folder_path, "%s_chronfuncs_history.png"%dataset), dpi=300)
 fig.savefig(os.path.join(fig_folder_path, "%s_chronfuncs_history.pdf"%dataset), dpi=300)
