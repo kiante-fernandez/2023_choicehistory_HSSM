@@ -105,17 +105,13 @@ def load_and_preprocess_data(file_path):
     mouse_data_limited['prevresp_cat'] = mouse_data_limited['prevresp_cat'].astype('category')
     mouse_data_limited['contrast_category'] = mouse_data_limited['contrast_category'].astype('category')
     # signed contrast solutions from meeting
-    #zscore the signed contrast
- #   mouse_data_limited['z_score_signed_contrast'] = (mouse_data_limited['signed_contrast'] - mouse_data_limited['signed_contrast'].mean()) / mouse_data_limited['signed_contrast'].std()
-    #squeeze the signed contrast such that anything above 25 is == 25 that means chaning values above 25 to 25
+    # Clip signed contrast to [-25, 25] and then divide by 100
+    # This preserves the original contrast values while scaling them appropriately
     mouse_data_limited['squeezed_signed_contrast'] = mouse_data_limited['signed_contrast'].clip(upper=25, lower=-25)
-    #squeeze and then take the z
-    mouse_data_limited['z_score_squeezed_signed_contrast'] = (mouse_data_limited['squeezed_signed_contrast'] - mouse_data_limited['squeezed_signed_contrast'].mean()) / mouse_data_limited['squeezed_signed_contrast'].std()
-    #apply a transformation to make sigmoidal. Use tanh or something on signed contrast regressor
-#    mouse_data_limited['sigmoid_signed_contrast'] = mouse_data_limited['signed_contrast'].apply(lambda x: (np.tanh(x) + 1) / 2)
-
-    #test clip with zscore
-    mouse_data_limited['signed_contrast'] = mouse_data_limited['z_score_squeezed_signed_contrast']
+    mouse_data_limited['scaled_signed_contrast'] = mouse_data_limited['squeezed_signed_contrast'] / 100
+    
+    # Use the scaled (not z-scored) contrast to maintain interpretable contrast levels
+    mouse_data_limited['signed_contrast'] = mouse_data_limited['scaled_signed_contrast']
 
     # Round RT for consistency
     mouse_data_limited['rt'] = mouse_data_limited['rt'].round(6)
@@ -146,25 +142,6 @@ model_names = [
 ddm_models = {name: make_model(mouse_data, name) for name in model_names}
 
 # %% run parameter estimation
-np.random.seed(2025)  # For reproducibility
-all_subjects = mouse_data_limited['participant_id'].unique()
-selected_subjects = np.random.choice(all_subjects, size=10, replace=False)
-print(f"Selected subjects for contrast specification testing: {selected_subjects}")
-
-# Create subset with only selected subjects
-mouse_data_subset = mouse_data_limited[mouse_data_limited['participant_id'].isin(selected_subjects)].copy()
-print(f"Subset includes {len(mouse_data_subset)} trials from {mouse_data_subset['participant_id'].nunique()} subjects")
-
-# Parameters for sampling
-sampling_params = {
-    "chains": 4,
-    "cores": 4,
-    "draws": 300,
-    "tune": 1000
-}
-
-# Sample from the posterior for each model
-#model_run_results = {name: run_model(mouse_data_subset, name, script_dir, **sampling_params) for name in model_names}
 # %% Run Variational Inference (VI)
 print("\n" + "="*60)
 print("RUNNING VARIATIONAL INFERENCE")
@@ -175,7 +152,7 @@ vi_config = {
     "vi_niter": 100000,  # Increased for better convergence
     "vi_method": "fullrank_advi",  # Recommended method
     "vi_optimizer": "adamax",  # Recommended optimizer
-    "vi_learning_rate": 0.001,  # Recommended learning rate for adamax
+    "vi_learning_rate": 0.0001,  # Recommended learning rate for adamax
 }
 
 print(f"VI Configuration:")
@@ -188,7 +165,7 @@ vi_results = {}
 for i, name in enumerate(model_names, 1):
     print(f"Running VI for model {i}/{len(model_names)}: {name}")
     vi_results[name] = run_model(
-        mouse_data_subset, 
+        mouse_data_limited, 
         name, 
         script_dir, 
         sampling_method="vi",
@@ -197,3 +174,24 @@ for i, name in enumerate(model_names, 1):
     print(f"Completed VI for {name}\n")
 
 print("All VI runs completed!")
+
+# For MCMC sampling, use full dataset (VI already completed above)
+# np.random.seed(2025)  # For reproducibility
+# all_subjects = mouse_data_limited['participant_id'].unique()
+# selected_subjects = np.random.choice(all_subjects, size=10, replace=False)
+# print(f"Selected subjects for contrast specification testing: {selected_subjects}")
+
+# Use full dataset for MCMC sampling
+mouse_data_subset = mouse_data_limited.copy()
+print(f"Full dataset includes {len(mouse_data_subset)} trials from {mouse_data_subset['participant_id'].nunique()} subjects")
+
+# Parameters for sampling
+sampling_params = {
+    "chains": 4,
+    "cores": 4,
+    "draws": 300,
+    "tune": 1000
+}
+
+# Sample from the posterior for each model
+model_run_results = {name: run_model(mouse_data_limited, name, script_dir, **sampling_params) for name in model_names}
