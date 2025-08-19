@@ -9,16 +9,18 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from ..utils import utils_plot as tools
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from utils import utils_plot as tools
 
 ## INITIALIZE A FEW THINGS
 tools.seaborn_style()
 
 # Get the directory of the script being run
 script_dir = os.path.dirname(os.path.realpath(__file__))
-
 # Construct the path to the data file
-dataset = 'ibl_trainingChoiceWorld_raw_20250310'
+dataset = 'ibl_trainingChoiceWorld_20250310'
 # dataset = 'visual_motion_2afc_fd'
 
 # Construct the path to the data file

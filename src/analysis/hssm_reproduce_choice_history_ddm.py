@@ -21,6 +21,24 @@ from utils.utils_hssm import run_model
 # Set up file paths
 script_dir = os.path.dirname(os.path.realpath(__file__))
 
+def apply_rt_exclusions(data, lower_bound=0.1, iqr_multiplier=2):
+    """Apply RT exclusions per subject"""
+    
+    # Apply IQR-based exclusion per subject
+    def apply_iqr_exclusion(group):
+        Q1 = group['rt'].quantile(0.25)
+        Q3 = group['rt'].quantile(0.75)
+        IQR = Q3 - Q1
+        return group[
+            (group['rt'] > (Q1 - iqr_multiplier * IQR)) & 
+            (group['rt'] < (Q3 + iqr_multiplier * IQR))
+        ]
+    
+    # Apply exclusions per subject
+    data = data.groupby('subj_idx').apply(apply_iqr_exclusion).reset_index(drop=True)
+    
+    return data
+
 # Data loading and preprocessing function
 def load_and_preprocess_data(file_path):
     """
@@ -52,11 +70,14 @@ def load_and_preprocess_data(file_path):
         'movement_onset', 'rt', 'prevresp', 'signed_contrast', 'response'
     ])
     
-    # Filter based on movement onset and reaction time
+    # Filter based on movement onset and reaction time (hard cutoffs)
     mouse_data_limited = mouse_data_limited[(mouse_data_limited['movement_onset'] < 5) & 
                                            (mouse_data_limited['rt'] < 5)]
     mouse_data_limited = mouse_data_limited[(mouse_data_limited['movement_onset'] > 0.08) & 
                                            (mouse_data_limited['rt'] > 0.08)]
+    
+    # Apply RT exclusions using IQR method
+    mouse_data_limited = apply_rt_exclusions(mouse_data_limited)
     
     # Check for mice with less than 200 trials and exclude them
     trial_counts = mouse_data_limited.groupby('participant_id').size()
@@ -139,7 +160,7 @@ sampling_params = {
     "chains": 4,
     "cores": 4,
     "draws": 300,
-    "tune": 500
+    "tune": 1000
 }
 
 # Sample from the posterior for each model

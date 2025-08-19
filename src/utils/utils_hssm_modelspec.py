@@ -7,6 +7,7 @@
 # 2023/12/05      Kianté Fernandez<kiantefernan@gmail.com>   coded up version one
 # 2023/17/05      Kianté Fernandez<kiantefernan@gmail.com>   added make_model draft
 # 2024/06/10      Kianté Fernandez<kiantefernan@gmail.com>   updated with models with hierarchical
+# 2025/08/18      Kianté Fernandez<kiantefernan@gmail.com>   Implemented A-centered parameterization
 
 import pandas as pd
 import hssm
@@ -15,7 +16,12 @@ import bambi as bmb
 # %% make model function
 def make_model(data, mname_full):
     """
-    Create a Hierarchical Sequential Sampling Model (HSSM) based on the specified model name.
+    Create a Hierarchical Sequential Sampling Model (HSSM) with a centered parameterization.
+
+    This function implements the "A-centered model" or "0+" specification where subject-specific
+    coefficients are drawn directly from a hierarchical prior whose parameters (mu, sigma) are
+    estimated from the data. This is achieved by changing the formula structure to
+    `~ 0 + (1 + regressor | group)` and setting `noncentered=False`.
 
     Parameters:
     data (DataFrame): The data to be used in the model.
@@ -24,7 +30,7 @@ def make_model(data, mname_full):
     Returns:
     HSSM: The constructed HSSM model.
     """
-    print('Making HSSM model')
+    print('Making HSSM model (A-centered specification)')
 
     if mname_full.startswith('full_ddm_'):
         base_model = 'full_ddm'
@@ -38,37 +44,52 @@ def make_model(data, mname_full):
     print(f'Base model: {base_model}')
     print(f'Model name: {mname}')
 
-    # Define the base 'nohist' model specification
+    # Define the base 'nohist' model specification with A-centered parameterization
     nohist_spec = [
         {"name": "v",
-         "formula": "v ~ 1 + signed_contrast + (1 + signed_contrast | participant_id)",
+         "formula": "v ~ 0 + (1 + signed_contrast | participant_id)", # Centered formula
          "link": "identity",
          "prior": {
-            "Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1.0},
-            "signed_contrast": {"name": "Normal", "mu": 0.0, "sigma": 1.0},
-            "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "HalfNormal", "sigma": 0.5}},
-            "signed_contrast|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "HalfNormal", "sigma": 0.5}}
+            "1|participant_id": {
+                "name": "Normal",
+                "mu": {"name": "Normal", "mu": 0.0, "sigma": 1.0}, # Hyperprior on the mean (fixed effect)
+                "sigma": {"name": "HalfNormal", "sigma": 0.5}
+            },
+            "signed_contrast|participant_id": {
+                "name": "Normal",
+                "mu": {"name": "Normal", "mu": 0.0, "sigma": 1.0}, # Hyperprior on the mean (fixed effect)
+                "sigma": {"name": "HalfNormal", "sigma": 0.5}
+            }
          }},
         {"name": "z",
-         "formula": "z ~ 1 + (1 | participant_id)",
+         "formula": "z ~ 0 + (1 | participant_id)", # Centered formula
          "link": "logit",
          "prior": {
-            "Intercept": {"name": "Normal", "mu": 0.0, "sigma": 0.3},
-            "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "HalfNormal", "sigma": 0.5}}
+            "1|participant_id": {
+                "name": "Normal",
+                "mu": {"name": "Normal", "mu": 0.0, "sigma": 0.3}, # Hyperprior
+                "sigma": {"name": "HalfNormal", "sigma": 0.5}
+            }
          }},
         {"name": "t",
-         "formula": "t ~ 1 + (1 | participant_id)",
+         "formula": "t ~ 0 + (1 | participant_id)", # Centered formula
          "link": "log",
          "prior": {
-            "Intercept": {"name": "Normal", "mu": -1.9, "sigma": 0.3},
-            "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "HalfNormal", "sigma": 0.3}}
+            "1|participant_id": {
+                "name": "Normal",
+                "mu": {"name": "Normal", "mu": -1.9, "sigma": 0.3}, # Hyperprior
+                "sigma": {"name": "HalfNormal", "sigma": 0.3}
+            }
          }},
         {"name": "a",
-         "formula": "a ~ 1 + (1 | participant_id)",
+         "formula": "a ~ 0 + (1 | participant_id)", # Centered formula
          "link": "log",
          "prior": {
-            "Intercept": {"name": "Normal", "mu": -0.1, "sigma": 0.3},
-            "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "HalfNormal", "sigma": 0.5}}
+            "1|participant_id": {
+                "name": "Normal",
+                "mu": {"name": "Normal", "mu": -0.1, "sigma": 0.3}, # Hyperprior
+                "sigma": {"name": "HalfNormal", "sigma": 0.5}
+            }
          }}
     ]
 
@@ -77,13 +98,19 @@ def make_model(data, mname_full):
         'nohist': nohist_spec,
         'catnohist': [
             {"name": "v",
-             "formula": "v ~ 1 + C(signed_contrast) + (1 + C(signed_contrast) | participant_id)",
+             "formula": "v ~ 0 + (1 + C(signed_contrast) | participant_id)", # Centered
              "link": "identity",
              "prior": {
-                "Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1.0},
-                "C(signed_contrast)": {"name": "Normal", "mu": 0.0, "sigma": 1.0},
-                "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "HalfNormal", "sigma": 0.5}},
-                "C(signed_contrast)|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "HalfNormal", "sigma": 0.5}}
+                "1|participant_id": {
+                    "name": "Normal",
+                    "mu": {"name": "Normal", "mu": 0.0, "sigma": 1.0},
+                    "sigma": {"name": "HalfNormal", "sigma": 0.5}
+                },
+                "C(signed_contrast)|participant_id": {
+                    "name": "Normal",
+                    "mu": {"name": "Normal", "mu": 0.0, "sigma": 1.0},
+                    "sigma": {"name": "HalfNormal", "sigma": 0.5}
+                }
              }},
             nohist_spec[1], # z spec
             nohist_spec[2], # t spec
@@ -91,15 +118,21 @@ def make_model(data, mname_full):
         ],
         'prevresp_v': [
             {"name": "v",
-             "formula": "v ~ 1 + prevresp_cat + signed_contrast + (1 + prevresp_cat + signed_contrast | participant_id)",
+             "formula": "v ~ 0 + (1 + prevresp_cat + signed_contrast | participant_id)", # Centered
              "link": "identity",
              "prior": {
-                "Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1.0},
-                "prevresp_cat": {"name": "Normal", "mu": 0.0, "sigma": 1.0},
-                "signed_contrast": {"name": "Normal", "mu": 0.0, "sigma": 1.0},
-                "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "HalfNormal", "sigma": 0.5}},
-                "prevresp_cat|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "HalfNormal", "sigma": 0.5}},
-                "signed_contrast|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "HalfNormal", "sigma": 0.5}}
+                "1|participant_id": {
+                    "name": "Normal", "mu": {"name": "Normal", "mu": 0.0, "sigma": 1.0},
+                    "sigma": {"name": "HalfNormal", "sigma": 0.5}
+                },
+                "prevresp_cat|participant_id": {
+                    "name": "Normal", "mu": {"name": "Normal", "mu": 0.0, "sigma": 1.0},
+                    "sigma": {"name": "HalfNormal", "sigma": 0.5}
+                },
+                "signed_contrast|participant_id": {
+                    "name": "Normal", "mu": {"name": "Normal", "mu": 0.0, "sigma": 1.0},
+                    "sigma": {"name": "HalfNormal", "sigma": 0.5}
+                }
              }},
             nohist_spec[1], # z spec
             nohist_spec[2], # t spec
@@ -108,13 +141,17 @@ def make_model(data, mname_full):
         'prevresp_z': [
             nohist_spec[0], # v spec
             {"name": "z",
-             "formula": "z ~ 1 + prevresp_cat + (1 + prevresp_cat | participant_id)",
+             "formula": "z ~ 0 + (1 + prevresp_cat | participant_id)", # Centered
              "link": "logit",
              "prior": {
-                "Intercept": {"name": "Normal", "mu": 0.0, "sigma": 0.3},
-                "prevresp_cat": {"name": "Normal", "mu": 0.0, "sigma": 0.5},
-                "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "HalfNormal", "sigma": 0.5}},
-                "prevresp_cat|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "HalfNormal", "sigma": 0.5}}
+                "1|participant_id": {
+                    "name": "Normal", "mu": {"name": "Normal", "mu": 0.0, "sigma": 0.3},
+                    "sigma": {"name": "HalfNormal", "sigma": 0.5}
+                },
+                "prevresp_cat|participant_id": {
+                    "name": "Normal", "mu": {"name": "Normal", "mu": 0.0, "sigma": 0.5},
+                    "sigma": {"name": "HalfNormal", "sigma": 0.5}
+                }
              }},
             nohist_spec[2], # t spec
             nohist_spec[3]  # a spec
@@ -137,21 +174,24 @@ def make_model(data, mname_full):
     # Add theta parameter if needed
     if "angle" in base_model:
         current_model_spec.append({
-            "name": "theta", "formula": "theta ~ 1 + (1 | participant_id)", "link": "identity",
+            "name": "theta", "formula": "theta ~ 0 + (1 | participant_id)", "link": "identity", # Centered
             "prior": {
-                "Intercept": {"name": "Normal", "mu": 0.0, "sigma": 0.5},
-                "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "HalfNormal", "sigma": 0.5}}
+                "1|participant_id": {
+                    "name": "Normal",
+                    "mu": {"name": "Normal", "mu": 0.0, "sigma": 0.5},
+                    "sigma": {"name": "HalfNormal", "sigma": 0.5}
+                }
             }})
-                       
+
     hssm_model = hssm.HSSM(
-        data=data, 
+        data=data,
         model=base_model,
         loglik_kind=spec_loglik_kind,
         include=current_model_spec,
-        noncentered=True,
+        noncentered=False, # Set to False for centered parameterization
         lapse=bmb.Prior("Uniform", lower=0.0, upper=5.0),
         p_outlier={
-            "formula": "p_outlier ~ 1 + (1 | participant_id)",
+            "formula": "p_outlier ~ 1 + (1 | participant_id)", # Standard formula for non-hierarchical priors
             "link": "logit",
             "prior": {
                 "Intercept": {"name": "Normal", "mu": -1.6, "sigma": 1.0},
