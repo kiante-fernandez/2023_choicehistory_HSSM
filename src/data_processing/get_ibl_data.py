@@ -67,7 +67,7 @@ def compute_choice_history(trials):
 
     return trials
 
-def clean_rts(rt, cutoff=[0.08, 5],
+def clean_rts(rt, cutoff=[0.08, 2],
               compare_with=None, comparison_cutoff=None):
 
     assert (0 < np.nanmedian(rt) < 3) # median RT should be within some reasonable bounds
@@ -241,7 +241,7 @@ for subject in tqdm(subjects):
         except: print('skipping %s, negative RTs '%subject); continue
 
         # remove outlier RTs
-        trials['rt'] = clean_rts(trials['rt'], [0.08, 5])
+        trials['rt'] = clean_rts(trials['rt'], [0.08, 2])
 
         # add choice history information
         trials = compute_choice_history(trials)

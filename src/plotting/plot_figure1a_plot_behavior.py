@@ -84,7 +84,7 @@ fig.map(sns.histplot, "rt", binwidth=0.02, element='step', fill=False,
 for axidx, ax in enumerate(fig.axes.flat):
     sns.histplot(data, x='rt', ax=ax, element='step', fill=False,
              stat='probability', binwidth=0.02, legend=False, color='darkblue', linewidth=2)
-    ax.set_xlim([0, 1.5])
+    ax.set_xlim([0, 2])
 fig.despine(trim=True, offset=1)
 fig.set_axis_labels('RT (s)', ' ')
 fig.set_yticklabels('')
