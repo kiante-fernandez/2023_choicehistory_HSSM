@@ -17,7 +17,7 @@ import bambi as bmb
 # Main Model Selection Function
 # =====================================================================================
 
-def make_model(data, mname_full, parameterization='centered'):
+def make_model(data, mname_full, parameterization='noncentered'):
     """
     Primary wrapper function to create an HSSM model.
 
@@ -128,6 +128,8 @@ def make_model_centered(data, mname_full):
     return hssm.HSSM(
         data=data, model=base_model, loglik_kind=spec_loglik_kind,
         include=current_model_spec, noncentered=False,
+        lapse=None,
+        p_outlier=None
         # lapse=bmb.Prior("Uniform", lower=0.0, upper=5.0),
         # p_outlier={
         #     "formula": "p_outlier ~ 1 + (1 | participant_id)", "link": "logit",
@@ -243,6 +245,8 @@ def make_model_noncentered(data, mname_full):
     return hssm.HSSM(
         data=data, model=base_model, loglik_kind=spec_loglik_kind,
         include=current_model_spec, noncentered=True,
+        lapse=None,
+        p_outlier=None
         # lapse=bmb.Prior("Uniform", lower=0.0, upper=5.0),
         # p_outlier={
         #     "formula": "p_outlier ~ 1 + (1 | participant_id)", "link": "logit",
