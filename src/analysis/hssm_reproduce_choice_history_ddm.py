@@ -125,7 +125,7 @@ def load_and_preprocess_data(file_path):
     return mouse_data_limited
 
 #%% Load data and process
-MOUSE_DATA_PATH = os.path.join('/Users/kiante/Documents/2023_choicehistory_HSSM/data/ibl_trainingChoiceWorld_raw_20250310.csv')
+MOUSE_DATA_PATH = os.path.join('/Users/kiante/Documents/2023_choicehistory_HSSM/data/ibl_trainingChoiceWorld_20250310.csv')
 mouse_data = load_and_preprocess_data(MOUSE_DATA_PATH)
 print(f"Analysis includes {mouse_data['participant_id'].nunique()} mice and {len(mouse_data)} trials")
 
