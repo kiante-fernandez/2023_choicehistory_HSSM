@@ -21,6 +21,7 @@ tools.seaborn_style()
 script_dir = os.path.dirname(os.path.realpath(__file__))
 # Construct the path to the data file
 dataset = 'ibl_trainingChoiceWorld_20250310'
+dataset = 'ibl_trainingChoiceWorld_20250819'
 # dataset = 'visual_motion_2afc_fd'
 
 # Construct the path to the data file
@@ -32,17 +33,7 @@ data = pd.read_csv(os.path.join(data_folder_path, '%s.csv'%dataset))
 if dataset == 'visual_motion_2afc_fd':
       data['signed_contrast'] = data['stimulus'] * data['coherence']
 
-# Clean data - remove NaN values in key columns first
-print(f"Original data shape: {data.shape}")
-data = data.dropna(subset=['rt', 'response', 'signed_contrast', 'movement_onset'])
-print(f"After removing NaN values: {data.shape}")
-
-# Apply RT and movement onset exclusions from mouse analysis
-print(f"Before RT exclusions: {data.shape}")
-data = data[(data['movement_onset'] < 5) & (data['rt'] < 5)]
-data = data[(data['movement_onset'] > 0.08) & (data['rt'] > 0.08)]
-print(f"After RT exclusions: {data.shape}")
-print(f"Number of subjects: {data.subj_idx.nunique()}")
+data['signed_contrast'] = data['signed_contrast'] * 100 # keep old
 
 # %% ================================= #
 # REGULAR PSYCHFUNCS
@@ -57,9 +48,11 @@ for axidx, ax in enumerate(fig.axes.flat):
                       data.subj_idx, ax=ax, legend=False, color='darkblue', linewidth=2)
 fig.despine(trim=True)
 fig.set_axis_labels('Signed contrast (%)', 'Rightward choice (%)')
-ax.set_title('a. Psychometric function (n = %d)'%data.subj_idx.nunique())
+ax.set_title('Psychometric function (n = %d)'%data.subj_idx.nunique())
+ax.set_title('Psychometric function')
 
 fig.savefig(os.path.join(fig_folder_path, "%s_psychfuncs.png"%dataset), dpi=300)
+fig.savefig(os.path.join(fig_folder_path, "%s_psychfuncs.pdf"%dataset), dpi=300)
 
 # %% ================================= #
 # CHRONFUNCS on good RTs
@@ -74,7 +67,10 @@ for axidx, ax in enumerate(fig.axes.flat):
 fig.despine(trim=True)
 fig.set_axis_labels('Signed contrast (%)', 'RT (s)')
 ax.set_title('b. Chronometric function (n = %d)'%data.subj_idx.nunique())
+ax.set_title('Chronometric function')
+
 fig.savefig(os.path.join(fig_folder_path, "%s_chronfuncs.png"%dataset), dpi=300)
+fig.savefig(os.path.join(fig_folder_path, "%s_chronfuncs.pdf"%dataset), dpi=300)
 
 # and RT distributions
 fig = sns.FacetGrid(data, hue="subj_idx")
@@ -89,6 +85,7 @@ fig.despine(trim=True, offset=1)
 fig.set_axis_labels('RT (s)', ' ')
 ax.set_title('RT distributions')
 fig.savefig(os.path.join(fig_folder_path, "%s_rtdist.png"%dataset), dpi=300)
+fig.savefig(os.path.join(fig_folder_path, "%s_rtdist.pdf"%dataset), dpi=300)
 
 # %% ================================= #
 # RT distributions per subject
@@ -98,6 +95,7 @@ fig = sns.FacetGrid(data, col="subj_idx", col_wrap=np.ceil(np.sqrt(data.subj_idx
                         sharex=True, sharey=False)
 fig.map(sns.histplot, "rt", binwidth=0.05, element='step', color='darkblue')
 fig.savefig(os.path.join(fig_folder_path, "%s_rtdist_allsj.png"%dataset), dpi=300)
+fig.savefig(os.path.join(fig_folder_path, "%s_rtdist_allsj.pdf"%dataset), dpi=300)
 
 # %% ================================= #
 # USE THE SAME FILE AS FOR HDDM FITS
@@ -125,6 +123,8 @@ for axidx, ax in enumerate(fig.axes.flat):
         ax.set_title('History bias')
 fig.despine(trim=True)
 fig.savefig(os.path.join(fig_folder_path, "%s_psychfuncs_history.png"%dataset), dpi=300)
+fig.savefig(os.path.join(fig_folder_path, "%s_psychfuncs_history.pdf"%dataset), dpi=300)
+
 plt.close('all')
 
 #%% also previous history chronometric 
@@ -136,6 +136,8 @@ for axidx, ax in enumerate(fig.axes.flat):
         # ax.set_ylim([0, 3])
 fig.despine(trim=True)
 fig.savefig(os.path.join(fig_folder_path, "%s_chronfuncs_history.png"%dataset), dpi=300)
+fig.savefig(os.path.join(fig_folder_path, "%s_chronfuncs_history.pdf"%dataset), dpi=300)
+
 plt.close('all')
 
 # %%
