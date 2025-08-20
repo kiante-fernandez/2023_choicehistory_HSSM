@@ -131,7 +131,9 @@ def make_model_centered(data, mname_full):
         data=data, model=base_model, loglik_kind=spec_loglik_kind,
         include=current_model_spec, noncentered=False,
         lapse=None,
-        p_outlier=None
+        p_outlier=None,
+        process_initvals=False,
+        initval_jitter=0.00001
         # lapse=bmb.Prior("Uniform", lower=0.0, upper=5.0),
         # p_outlier={
         #     "formula": "p_outlier ~ 1 + (1 | participant_id)", "link": "logit",
@@ -249,7 +251,9 @@ def make_model_noncentered(data, mname_full):
         data=data, model=base_model, loglik_kind=spec_loglik_kind,
         include=current_model_spec, noncentered=True,
         lapse=None,
-        p_outlier=None
+        p_outlier=None,
+        process_initvals=False,
+        initval_jitter=0.00001
         # lapse=bmb.Prior("Uniform", lower=0.0, upper=5.0),
         # p_outlier={
         #     "formula": "p_outlier ~ 1 + (1 | participant_id)", "link": "logit",

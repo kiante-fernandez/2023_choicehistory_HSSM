@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
-sys.path.append('/Users/kiante/Documents/2023_choicehistory_HSSM/src')
+sys.path.append('/Users/kiante/Documents/repositories/2023_choicehistory_HSSM/src')
 from utils.utils_hssm_modelspec import make_model
 from utils.utils_hssm import run_model
 from utils.hierarchical_initvals import get_single_initvals
@@ -123,7 +123,7 @@ def load_and_preprocess_data(file_path):
     return mouse_data_limited
 
 #%% Load data and process
-MOUSE_DATA_PATH = os.path.join('/Users/kiante/Documents/2023_choicehistory_HSSM/data/ibl_trainingChoiceWorld_20250819.csv')
+MOUSE_DATA_PATH = os.path.join('/Users/kiante/Documents/repositories/2023_choicehistory_HSSM/data/ibl_trainingChoiceWorld_20250819.csv')
 mouse_data = load_and_preprocess_data(MOUSE_DATA_PATH)
 print(f"Analysis includes {mouse_data['participant_id'].nunique()} mice and {len(mouse_data)} trials")
 
@@ -131,14 +131,14 @@ mouse_data_limited = mouse_data.copy()
 
 # %% specify HSSM models
 model_names = [
-    "ddm_nohist",
+    # "ddm_nohist",
     # "ddm_prevresp_v",
     # "ddm_prevresp_z",
     # "ddm_prevresp_zv",
     # "angle_nohist",
     # "angle_prevresp_v",
     # "angle_prevresp_z",
-    # "angle_prevresp_zv",
+    "angle_prevresp_zv",
 ]
 
 #ddm_models = {name: make_model(mouse_data, name, parameterization= "noncentered") for name in model_names}
@@ -167,17 +167,17 @@ print("="*60)
 # Parameters for sampling
 sampling_params = {
     'sampler': 'nuts_numpyro',
-    "chains": 3,
-    "cores": 3,
-    "draws": 200,
-    "tune": 500
+    "chains": 4,
+    "cores": 4,
+    "draws": 100,
+    "tune": 200
 }
 
 # Option to use custom initial values
 use_custom_initvals = True
 
-ddm_models = {name: make_model(mouse_data, name, parameterization= "noncentered") for name in model_names}
-print(ddm_models["ddm_nohist"].initvals)
+ddm_models = {name: make_model(mouse_data_subset, name, parameterization= "noncentered") for name in model_names}
+print(ddm_models["angle_prevresp_zv"].initvals)
 
 if use_custom_initvals:
     print("Using custom hierarchical initial values based on fitted results...")
@@ -188,7 +188,7 @@ if use_custom_initvals:
         print(f"Getting custom initial values for {name}...")
         
         # Get single set of initial values (HSSM will handle multiple chains internally)
-        n_subjects = mouse_data_limited['participant_id'].nunique()
+        n_subjects = mouse_data_subset['participant_id'].nunique()
         custom_initvals = get_single_initvals(
             model_name=name, 
             parameterization='noncentered',  # Match the default in make_model
@@ -198,7 +198,7 @@ if use_custom_initvals:
         print(custom_initvals)
         print(f"Running MCMC for {name} with custom initial values...")
         model_run_results[name] = run_model(
-            mouse_data_limited, 
+            mouse_data_subset, 
             name, 
             script_dir, 
             initvals=custom_initvals,
@@ -208,7 +208,7 @@ if use_custom_initvals:
 else:
     print("Using default HSSM initial values...")
     # Sample from the posterior for each model without custom initial values
-    model_run_results = {name: run_model(mouse_data_limited, name, script_dir, **sampling_params) for name in model_names}
+    model_run_results = {name: run_model(mouse_data_subset, name, script_dir, **sampling_params) for name in model_names}
 
 print("\n" + "="*60)
 print("ALL MCMC SAMPLING COMPLETED!")
