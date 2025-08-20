@@ -195,6 +195,10 @@ def run_model(data, modelname, mypath, trace_id=0, sampling_method="mcmc", plot_
         "tune": kwargs.get('tune', 1000),
         "idata_kwargs": kwargs.get('idata_kwargs', dict(log_likelihood=True))  # return log likelihood
     }
+    
+    # Add initvals if provided
+    if 'initvals' in kwargs:
+        sampling_params['initvals'] = kwargs['initvals']
     m = make_model(data, modelname)
     time.sleep(trace_id) # to avoid different jobs trying to make the same folder
 

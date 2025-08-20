@@ -66,8 +66,8 @@ def make_model_centered(data, mname_full):
     else:
         base_model, *mname_parts = mname_full.split('_')
         mname = "_".join(mname_parts)
-#        spec_loglik_kind = "approx_differentiable"
-        spec_loglik_kind = "analytical"
+        spec_loglik_kind = "approx_differentiable"
+        #spec_loglik_kind = "analytical"
 
 
     print(f'Base model: {base_model}')
@@ -164,8 +164,8 @@ def make_model_noncentered(data, mname_full):
     else:
         base_model, *mname_parts = mname_full.split('_')
         mname = "_".join(mname_parts)
-        #spec_loglik_kind = "approx_differentiable"
-        spec_loglik_kind = "analytical"
+        spec_loglik_kind = "approx_differentiable"
+        #spec_loglik_kind = "analytical"
 
     print(f'Base model: {base_model}')
     print(f'Model name: {mname}')
