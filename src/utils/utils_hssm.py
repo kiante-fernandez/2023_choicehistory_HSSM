@@ -387,12 +387,33 @@ def run_model(data, modelname, mypath, trace_id=0, sampling_method="mcmc", plot_
         df2.to_csv(comparison_file)
         print(f'Model comparison saved: {comparison_file}')
 
-        # save useful output
+        # save useful output - only main parameters, not deterministic variables
         print("saving summary stats")
-        results =  az.summary(inference_data).reset_index()  # point estimate for each parameter and subject
+        import arviz as az
+        
+        # Filter to only include the main model parameters (exclude deterministic trial-wise variables)
+        if hasattr(inference_data, 'posterior'):
+            # Get list of variables, filtering out trial-wise deterministic variables
+            var_names = []
+            for var_name in inference_data.posterior.data_vars:
+                # Include only parameters that are not trial-wise (exclude __obs__ dimension)
+                if '__obs__' not in inference_data.posterior[var_name].dims:
+                    var_names.append(var_name)
+            
+            print(f"Including {len(var_names)} main parameters (excluding {len(inference_data.posterior.data_vars) - len(var_names)} trial-wise variables)")
+            
+            # Generate summary only for main parameters
+            if var_names:
+                results = az.summary(inference_data, var_names=var_names).reset_index()
+            else:
+                print("Warning: No main parameters found, using all variables")
+                results = az.summary(inference_data).reset_index()
+        else:
+            results = az.summary(inference_data).reset_index()
+            
         results_file = os.path.join(mypath, f'{modelname}_{timestamp}_results_combined.csv')
         results.to_csv(results_file)
-        print(f'Results summary saved: {results_file}') 
+        print(f'Results summary saved: {results_file} ({len(results)} parameters)') 
         
     elif sampling_method == "vi":
         import arviz as az
@@ -541,12 +562,33 @@ def run_model(data, modelname, mypath, trace_id=0, sampling_method="mcmc", plot_
             plt.close()
             print(f'VI loss history saved: {hist_file}')
             print(f'Final VI loss: {m.vi_approx.hist[-1]:.2f}')
-        # Extract and save summary statistics
+        # Extract and save summary statistics - only main parameters, not deterministic variables
         print("saving summary stats")
-        results = az.summary(m.vi_idata).reset_index()
+        import arviz as az
+        
+        # Filter to only include the main model parameters (exclude deterministic trial-wise variables)
+        if hasattr(m.vi_idata, 'posterior'):
+            # Get list of variables, filtering out trial-wise deterministic variables
+            var_names = []
+            for var_name in m.vi_idata.posterior.data_vars:
+                # Include only parameters that are not trial-wise (exclude __obs__ dimension)
+                if '__obs__' not in m.vi_idata.posterior[var_name].dims:
+                    var_names.append(var_name)
+            
+            print(f"Including {len(var_names)} main parameters (excluding {len(m.vi_idata.posterior.data_vars) - len(var_names)} trial-wise variables)")
+            
+            # Generate summary only for main parameters
+            if var_names:
+                results = az.summary(m.vi_idata, var_names=var_names).reset_index()
+            else:
+                print("Warning: No main parameters found, using all variables")
+                results = az.summary(m.vi_idata).reset_index()
+        else:
+            results = az.summary(m.vi_idata).reset_index()
+            
         results_file = os.path.join(mypath, f'{modelname}_{timestamp}_results_combined.csv')
         results.to_csv(results_file)
-        print(f'VI results summary saved: {results_file}') 
+        print(f'VI results summary saved: {results_file} ({len(results)} parameters)') 
         
         idatavi = m.vi_idata
         
@@ -679,13 +721,33 @@ def run_model(data, modelname, mypath, trace_id=0, sampling_method="mcmc", plot_
         df2.to_csv(comparison_file)
         print(f'Pathfinder model comparison saved: {comparison_file}')
         
-        # Save summary statistics
+        # Save summary statistics - only main parameters, not deterministic variables
         print("Saving summary stats")
         import arviz as az
-        results = az.summary(inference_data).reset_index()
+        
+        # Filter to only include the main model parameters (exclude deterministic trial-wise variables)
+        if hasattr(inference_data, 'posterior'):
+            # Get list of variables, filtering out trial-wise deterministic variables
+            var_names = []
+            for var_name in inference_data.posterior.data_vars:
+                # Include only parameters that are not trial-wise (exclude __obs__ dimension)
+                if '__obs__' not in inference_data.posterior[var_name].dims:
+                    var_names.append(var_name)
+            
+            print(f"Including {len(var_names)} main parameters (excluding {len(inference_data.posterior.data_vars) - len(var_names)} trial-wise variables)")
+            
+            # Generate summary only for main parameters
+            if var_names:
+                results = az.summary(inference_data, var_names=var_names).reset_index()
+            else:
+                print("Warning: No main parameters found, using all variables")
+                results = az.summary(inference_data).reset_index()
+        else:
+            results = az.summary(inference_data).reset_index()
+            
         results_file = os.path.join(mypath, f'{modelname}_pathfinder_{timestamp}_results_combined.csv')
         results.to_csv(results_file)
-        print(f'Pathfinder results summary saved: {results_file}')
+        print(f'Pathfinder results summary saved: {results_file} ({len(results)} parameters)')
         
         # Store inference data in model object for compatibility
         m._inference_obj = inference_data
