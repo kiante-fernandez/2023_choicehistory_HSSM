@@ -19,6 +19,7 @@ from sklearn.preprocessing import StandardScaler
 sys.path.append('/Users/kiante/Documents/2023_choicehistory_HSSM/src')
 from utils.utils_hssm_modelspec import make_model
 from utils.utils_hssm import run_model
+from utils.hierarchical_initvals import get_jittered_initvals
 # Set up file paths
 script_dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -59,14 +60,24 @@ def load_and_preprocess_data(file_path):
     pd.DataFrame
         Cleaned, preprocessed, and scaled mouse data
     """
+    MAX_MOVEMENT_ONSET = 2.0
+    MAX_RT = 2.0
+    MIN_MOVEMENT_ONSET = 0.08
+    MIN_RT = 0.08
     # Load the data
     mouse_data = pd.read_csv(file_path)
     
     # Create participant ID from subject index
     mouse_data['participant_id'] = pd.factorize(mouse_data['subj_idx'])[0] + 1
     
-    mouse_data_limited = mouse_data
+    #mouse_data_limited = mouse_data
     # Note: Other cleaning steps (RT exclusions, etc.) are performed elsewhere
+    mouse_data_limited = mouse_data[
+        (mouse_data['movement_onset'] < MAX_MOVEMENT_ONSET) & 
+        (mouse_data['rt'] < MAX_RT) &
+        (mouse_data['movement_onset'] > MIN_MOVEMENT_ONSET) & 
+        (mouse_data['rt'] > MIN_RT)
+    ].copy()
 
     # Check for mice with less than 200 trials and exclude them
     trial_counts = mouse_data_limited.groupby('participant_id').size()
@@ -163,10 +174,10 @@ vi_config = {
         "cooldown": 50,   # Wait 50 iterations after reduction
         "verbose": True     # Print scheduler actions
     },
-    "vi_grad_clip": 1.0,                    # Gradient clipping to prevent exploding gradients
+    "vi_grad_clip": 0.5,                    # Gradient clipping to prevent exploding gradients
     "vi_convergence_tolerance": 0.01,       # More lenient for noisy datasets (10x default)
     "vi_convergence_every": 500,            # Check less frequently to avoid noisy plateau detection  
-    "vi_min_iterations": 10000              # Guarantee at least 10,000 iterations before convergence checking
+    "vi_min_iterations": 15000              # Guarantee at least 25,000 iterations before convergence checking
 }
 
 print(f"VI Configuration:")
@@ -179,7 +190,7 @@ vi_results = {}
 for i, name in enumerate(model_names, 1):
     print(f"Running VI for model {i}/{len(model_names)}: {name}")
     vi_results[name] = run_model(
-        mouse_data_subset, 
+        mouse_data_limited, 
         name, 
         script_dir, 
         sampling_method="vi",
@@ -188,19 +199,3 @@ for i, name in enumerate(model_names, 1):
     print(f"Completed VI for {name}\n")
 
 print("All VI runs completed!")
-
-# %% For MCMC sampling, use full dataset (VI already completed above)
-
-# Parameters for sampling
-sampling_params = {
-    'sampler': 'nuts_numpyro',
-    "chains": 3,
-    "cores": 3,
-    "draws": 300,
-    "tune": 500
-}
-
-# Sample from the posterior for each model
-model_run_results = {name: run_model(mouse_data_subset, name, script_dir, **sampling_params) for name in model_names}
-
-# %%
