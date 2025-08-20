@@ -192,33 +192,36 @@ class StepLRScheduler(Callback):
 
 class ExponentialDecayScheduler(Callback):
     """
-    Exponential learning rate decay scheduler.
+    Exponential learning rate decay scheduler that applies decay at each iteration.
+    
+    A smooth decay is often more stable for noisy optimization problems.
+    The learning rate is updated at each step as: new_lr = old_lr * gamma
     
     Parameters:
     -----------
     learning_rate : pytensor.shared
         The shared learning rate variable to be modified
-    decay_rate : float, default 0.99
-        Decay rate per epoch
-    decay_steps : int, default 100
-        Apply decay every decay_steps iterations
-    min_lr : float, default 1e-7
+    gamma : float
+        Multiplicative factor of learning rate decay (e.g., 0.99995). This
+        should be very close to 1.0 for a slow, gradual decay.
+    min_lr : float, default 1e-10
         Lower bound on the learning rate
     verbose : bool, default False
-        If True, print messages when learning rate is reduced
+        If True, print messages periodically to track decay
     """
     
-    def __init__(self, learning_rate, decay_rate=0.99, decay_steps=100, 
-                 min_lr=1e-7, verbose=False):
+    def __init__(self, learning_rate, gamma, min_lr=1e-10, verbose=False):
         
         super().__init__()
         
         if not hasattr(learning_rate, 'get_value') or not hasattr(learning_rate, 'set_value'):
             raise ValueError("learning_rate must be a pytensor.shared variable")
             
+        if not 0 < gamma <= 1:
+            raise ValueError("gamma must be between 0 and 1")
+
         self.learning_rate = learning_rate
-        self.decay_rate = decay_rate
-        self.decay_steps = decay_steps
+        self.gamma = gamma
         self.min_lr = min_lr
         self.verbose = verbose
         
@@ -228,19 +231,18 @@ class ExponentialDecayScheduler(Callback):
     def __call__(self, approx, loss, i):
         """Called at each iteration during VI fitting."""
         
-        current_lr = self.learning_rate.get_value()
-        self.lr_history.append(current_lr)
+        # Always apply the decay
+        old_lr = self.learning_rate.get_value()
+        new_lr = max(old_lr * self.gamma, self.min_lr)
         
-        # Apply exponential decay
-        if i > 0 and i % self.decay_steps == 0:
-            old_lr = current_lr
-            new_lr = max(old_lr * self.decay_rate, self.min_lr)
-            
-            if new_lr < old_lr:
-                self.learning_rate.set_value(new_lr)
-                if self.verbose:
-                    logger.info(f"Iteration {i}: Exponential decay from {old_lr:.2e} to {new_lr:.2e}")
-                    print(f"Iteration {i}: Exponential decay from {old_lr:.2e} to {new_lr:.2e}")
+        # Set the new value
+        self.learning_rate.set_value(new_lr)
+        self.lr_history.append(new_lr)
+        
+        # Optional: Log the change periodically to avoid spamming the console
+        if self.verbose and i > 0 and i % 5000 == 0:
+            logger.info(f"Iteration {i}: LR decayed to {new_lr:.2e}")
+            print(f"Iteration {i}: LR decayed to {new_lr:.2e}")
                     
     def get_lr_history(self):
         """Get the learning rate history."""

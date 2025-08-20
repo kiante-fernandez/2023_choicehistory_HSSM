@@ -58,6 +58,95 @@ def dic(inference_data):
 # Assuming `HSSM` is the class of your HSSM objects and `inference_data` is the InferenceData attribute
 hssm.HSSM.saveInferenceData = saveInferenceData
 
+def generate_ppc_plots(model, modelname, ppc_group_dir, ppc_subject_dir, timestamp, 
+                      n_samples=10, subject_level=True):
+    """
+    Generate comprehensive posterior predictive check plots.
+    
+    Parameters:
+    -----------
+    model : hssm.HSSM
+        The fitted HSSM model object
+    modelname : str
+        Name of the model for file naming
+    ppc_group_dir : str
+        Directory to save group-level PPC plots
+    ppc_subject_dir : str
+        Directory to save subject-level PPC plots
+    timestamp : str
+        Timestamp string for unique file naming
+    n_samples : int, default=10
+        Number of samples to use for PPC generation
+    subject_level : bool, default=True
+        Whether to generate subject-level plots
+    """
+    print(f"Generating PPC plots with {n_samples} samples...")
+    
+    # Group-level PPC plots
+    try:
+        print("  Generating group-level PPC plot...")
+        
+        # Generate the plot
+        fig = model.plot_posterior_predictive(n_samples=n_samples, range=(-3, 3))
+        
+        # Enhance the plot styling
+        plt.suptitle(f"Posterior Predictive Check - {modelname.replace('_', ' ').title()}", 
+                    fontsize=16, y=0.98)
+        plt.tight_layout()
+        
+        # Save as both PNG and PDF
+        group_png = os.path.join(ppc_group_dir, f'{modelname}_{timestamp}_group_ppc.png')
+        group_pdf = os.path.join(ppc_group_dir, f'{modelname}_{timestamp}_group_ppc.pdf')
+        
+        plt.savefig(group_png, dpi=300, bbox_inches='tight', facecolor='white', edgecolor='none')
+        plt.savefig(group_pdf, bbox_inches='tight', facecolor='white', edgecolor='none')
+        plt.close()
+        
+        print(f"    ✓ Group-level PPC saved: {group_png} and {group_pdf}")
+        
+    except Exception as e:
+        print(f"    ✗ Failed to generate group-level PPC plot: {e}")
+        plt.close('all')  # Ensure no hanging figures
+    
+    # Subject-level PPC plots
+    if subject_level:
+        try:
+            print("  Generating subject-level PPC plots...")
+            
+            # Generate subject-level plot
+            fig = model.plot_posterior_predictive(
+                n_samples=n_samples, 
+                col="participant_id", 
+                col_wrap=3,
+                range=(-3, 3)
+            )
+            
+            # Enhance the plot styling
+            if hasattr(fig, 'figure'):
+                fig.figure.suptitle(f"Posterior Predictive Check by Participant - {modelname.replace('_', ' ').title()}", 
+                                   fontsize=16, y=1.02)
+            
+            # Save as both PNG and PDF
+            subject_png = os.path.join(ppc_subject_dir, f'{modelname}_{timestamp}_subject_ppc.png')
+            subject_pdf = os.path.join(ppc_subject_dir, f'{modelname}_{timestamp}_subject_ppc.pdf')
+            
+            if hasattr(fig, 'savefig'):
+                fig.savefig(subject_png, dpi=300, bbox_inches='tight', facecolor='white', edgecolor='none')
+                fig.savefig(subject_pdf, bbox_inches='tight', facecolor='white', edgecolor='none')
+            else:
+                plt.savefig(subject_png, dpi=300, bbox_inches='tight', facecolor='white', edgecolor='none')
+                plt.savefig(subject_pdf, bbox_inches='tight', facecolor='white', edgecolor='none')
+            
+            plt.close()
+            
+            print(f"    ✓ Subject-level PPC saved: {subject_png} and {subject_pdf}")
+            
+        except Exception as e:
+            print(f"    ✗ Failed to generate subject-level PPC plot: {e}")
+            print("    Continuing without subject-level plots...")
+            plt.close('all')  # Ensure no hanging figures
+
+
 def plot_traces_func(inference_data, modelname, mypath, timestamp):
     """
     Generate trace plots for HSSM model parameters.
@@ -101,12 +190,16 @@ def plot_traces_func(inference_data, modelname, mypath, timestamp):
 
 
 def run_model(data, modelname, mypath, trace_id=0, sampling_method="mcmc", plot_traces=True, 
+             plot_ppc=True, ppc_n_samples=10, ppc_subject_level=True,
              vi_niter=100000, vi_method="fullrank_advi", vi_optimizer="adamax", 
              vi_learning_rate=0.01, vi_scheduler=None, scheduler_params=None,
              vi_grad_clip=None, vi_convergence_tolerance=None, vi_convergence_every=None,
-             vi_min_iterations=None, **kwargs):
+             vi_min_iterations=None, 
+             # Pathfinder parameters
+             pathfinder_num_paths=4, pathfinder_num_draws=1000, pathfinder_num_single_draws=1000,
+             pathfinder_max_lbfgs_iters=1000, **kwargs):
     """
-    Run HSSM model with trace plotting and unique timestamped file naming.
+    Run HSSM model with trace plotting, PPC generation, and unique timestamped file naming.
     
     Parameters:
     -----------
@@ -119,9 +212,15 @@ def run_model(data, modelname, mypath, trace_id=0, sampling_method="mcmc", plot_
     trace_id : int, default=0
         Sleep time to avoid concurrent folder creation conflicts
     sampling_method : str, default="mcmc"
-        Sampling method: "mcmc" or "vi"
+        Sampling method: "mcmc", "vi", or "pathfinder"
     plot_traces : bool, default=True
         Whether to generate and save trace plots
+    plot_ppc : bool, default=True
+        Whether to generate posterior predictive check plots
+    ppc_n_samples : int, default=10
+        Number of samples to use for PPC generation
+    ppc_subject_level : bool, default=True
+        Whether to generate subject-level PPC plots in addition to group-level plots
     vi_niter : int, default=100000
         Number of iterations for VI (when sampling_method="vi")
     vi_method : str, default="fullrank_advi"
@@ -146,6 +245,14 @@ def run_model(data, modelname, mypath, trace_id=0, sampling_method="mcmc", plot_
     vi_min_iterations : int, optional
         Minimum iterations before convergence checking starts. Ensures models run at least
         this many iterations before early stopping is allowed. Default: None
+    pathfinder_num_paths : int, default=4
+        Number of parallel Pathfinder chains to run (when sampling_method="pathfinder")
+    pathfinder_num_draws : int, default=1000
+        Number of posterior samples to draw per path (when sampling_method="pathfinder")
+    pathfinder_num_single_draws : int, default=1000
+        Number of samples from single best path (when sampling_method="pathfinder")
+    pathfinder_max_lbfgs_iters : int, default=1000
+        Maximum L-BFGS iterations for optimization (when sampling_method="pathfinder")
     **kwargs : dict
         Additional sampling parameters
         
@@ -177,15 +284,25 @@ def run_model(data, modelname, mypath, trace_id=0, sampling_method="mcmc", plot_
     models_dir = os.path.join(results_base, 'models')
     comparisons_dir = os.path.join(results_base, 'model_comparisons')
     traces_dir = os.path.join(results_base, 'traces')
-    
+    PPC_dir = os.path.join(results_base, 'PPC')
+
     print(f'Project root: {project_root}')
     print(f'Results base: {results_base}')
     
     # Create directories if they don't exist
-    for directory in [models_dir, comparisons_dir, traces_dir]:
+    for directory in [models_dir, comparisons_dir, traces_dir, PPC_dir]:
         if not os.path.exists(directory):
             os.makedirs(directory)
             print(f'Created directory {directory}')
+    
+    # Create subdirectories for PPC plots
+    ppc_group_dir = os.path.join(PPC_dir, 'group_level')
+    ppc_subject_dir = os.path.join(PPC_dir, 'subject_level')
+    if plot_ppc:
+        for ppc_dir in [ppc_group_dir, ppc_subject_dir]:
+            if not os.path.exists(ppc_dir):
+                os.makedirs(ppc_dir)
+                print(f'Created PPC directory {ppc_dir}')
 
     sampling_params = {
         "sampler": kwargs.get('sampler', 'nuts_numpyro'),
@@ -223,7 +340,20 @@ def run_model(data, modelname, mypath, trace_id=0, sampling_method="mcmc", plot_
         # Save the InferenceData object with timestamp
         model_file = os.path.join(models_dir, f'{modelname}_{timestamp}_model.nc')
         inference_data.to_netcdf(model_file)
+        m.save_model(model_name = f'{modelname}_{timestamp}_model')
         print(f'Model saved: {model_file}')
+        
+        # Generate comprehensive PPC plots if requested
+        if plot_ppc:
+            generate_ppc_plots(
+                model=m, 
+                modelname=modelname, 
+                ppc_group_dir=ppc_group_dir, 
+                ppc_subject_dir=ppc_subject_dir, 
+                timestamp=timestamp,
+                n_samples=ppc_n_samples, 
+                subject_level=ppc_subject_level
+            )
         
         # Generate trace plots if requested
         if plot_traces:
@@ -335,6 +465,11 @@ def run_model(data, modelname, mypath, trace_id=0, sampling_method="mcmc", plot_
             "callbacks": callbacks
         }
         
+        # Add initial values if provided
+        if 'initvals' in kwargs:
+            vi_kwargs["start"] = kwargs['initvals']
+            print(f"Using custom initial values for VI with {len(kwargs['initvals'])} parameters")
+        
         # Add gradient clipping if specified
         if vi_grad_clip is not None:
             vi_kwargs["total_grad_norm_constraint"] = vi_grad_clip
@@ -346,7 +481,7 @@ def run_model(data, modelname, mypath, trace_id=0, sampling_method="mcmc", plot_
         print(f"Running VI with {vi_niter} iterations, method: {vi_method}, optimizer: {vi_optimizer}, lr: {vi_learning_rate}, {scheduler_info}, {grad_clip_info}")
         
         # Run VI with configurable parameters and convergence monitoring
-        m.vi(**vi_kwargs)
+        m.vi(ignore_mcmc_start_point_defaults = True, **vi_kwargs)
         
         # Sample from VI approximation
         m.vi_approx.sample(draws=1000)
@@ -434,8 +569,129 @@ def run_model(data, modelname, mypath, trace_id=0, sampling_method="mcmc", plot_
         df2.to_csv(comparison_file)
         print(f'VI model comparison saved: {comparison_file}')
         
+    elif sampling_method == "pathfinder":
+        print("Running Pathfinder VI...")
+        start_time = time.time()
+        
+        # Import pathfinder functionality
+        try:
+            import pymc_extras as pmx
+        except ImportError:
+            raise ImportError(
+                "pymc-extras is required for Pathfinder VI. "
+                "Install it with: pip install git+https://github.com/pymc-devs/pymc-extras"
+            )
+        
+        # Set up Pathfinder arguments
+        pathfinder_args = {
+            "num_paths": pathfinder_num_paths,
+            "num_draws": pathfinder_num_draws,
+            "num_draws_per_path": pathfinder_num_single_draws,  # Correct parameter name
+            "maxiter": pathfinder_max_lbfgs_iters,
+            # "jitter": pathfinder_jitter,
+            # "concurrent": "process"
+        }
+        
+        # Add any additional pathfinder kwargs (but exclude non-pathfinder parameters and duplicates)
+        excluded_keys = {'draws', 'chains', 'cores', 'tune', 'sampler', 'max_lbfgs_iters'}  # MCMC-specific parameters and duplicates
+        pathfinder_kwargs_keys = [k for k in kwargs.keys() if k.startswith('pathfinder_')]
+        for key in pathfinder_kwargs_keys:
+            clean_key = key.replace('pathfinder_', '')
+            if clean_key not in excluded_keys and clean_key not in pathfinder_args:
+                pathfinder_args[clean_key] = kwargs[key]
+        
+        print(f"Pathfinder settings: {pathfinder_args}")
+        
+        # Run Pathfinder VI
+        with m.pymc_model:
+            inference_data = pmx.fit(method="pathfinder", **pathfinder_args)
+        
+        end_time = time.time()
+        runtime = end_time - start_time
+        print(f"Pathfinder VI completed in {runtime:.2f} seconds ({runtime/60:.2f} minutes)")
+        
+        # Compute log likelihood for model comparison
+        print("Computing log likelihood...")
+        try:
+            import pymc as pm
+            with m.pymc_model:
+                pm.compute_log_likelihood(inference_data)
+        except Exception as e:
+            print(f"Warning: Could not compute log likelihood: {e}")
+        
+        # Save the model
+        print('Saving Pathfinder model...')
+        model_file = os.path.join(models_dir, f'{modelname}_pathfinder_{timestamp}_model.nc')
+        inference_data.to_netcdf(model_file)
+        print(f'Pathfinder model saved: {model_file}')
+        
+        # Generate PPC plots if requested
+        if plot_ppc:
+            print("Generating PPC plots...")
+            try:
+                # Set inference object for plotting
+                m._inference_obj = inference_data
+                generate_ppc_plots(
+                    model=m,
+                    modelname=f"{modelname}_pathfinder",
+                    ppc_group_dir=ppc_group_dir,
+                    ppc_subject_dir=ppc_subject_dir,
+                    timestamp=timestamp,
+                    n_samples=ppc_n_samples,
+                    subject_level=ppc_subject_level
+                )
+            except Exception as e:
+                print(f"Warning: Could not generate PPC plots: {e}")
+        
+        # Generate trace plots if requested
+        if plot_traces:
+            print("Generating trace plots...")
+            try:
+                plot_traces_func(inference_data, f"{modelname}_pathfinder", traces_dir, timestamp)
+            except Exception as e:
+                print(f"Warning: Could not generate trace plots: {e}")
+        
+        # Save model comparison metrics
+        print("Save model comparison indices")
+        df = {}
+        
+        if 'log_likelihood' in inference_data.groups():
+            try:
+                import arviz as az
+                df['waic'] = az.waic(inference_data).elpd_waic
+                df['loo'] = az.loo(inference_data).elpd_loo
+            except Exception as e:
+                print(f"Warning: Could not calculate WAIC/LOO: {e}")
+                df['waic'] = 'N/A'
+                df['loo'] = 'N/A'
+        else:
+            df['waic'] = 'N/A'
+            df['loo'] = 'N/A'
+        
+        # Add Pathfinder-specific metrics
+        df['method'] = 'pathfinder'
+        df['num_paths'] = pathfinder_num_paths
+        df['num_draws'] = pathfinder_num_draws
+        df['runtime_seconds'] = runtime
+        
+        df2 = pd.DataFrame(list(df.items()), columns=['Metric', 'Value'])
+        comparison_file = os.path.join(comparisons_dir, f'{modelname}_pathfinder_{timestamp}_model_comparison.csv')
+        df2.to_csv(comparison_file)
+        print(f'Pathfinder model comparison saved: {comparison_file}')
+        
+        # Save summary statistics
+        print("Saving summary stats")
+        import arviz as az
+        results = az.summary(inference_data).reset_index()
+        results_file = os.path.join(mypath, f'{modelname}_pathfinder_{timestamp}_results_combined.csv')
+        results.to_csv(results_file)
+        print(f'Pathfinder results summary saved: {results_file}')
+        
+        # Store inference data in model object for compatibility
+        m._inference_obj = inference_data
+        
     else:
-        raise ValueError("Unsupported sampling method. Use 'mcmc' or 'vi'.")
+        raise ValueError("Unsupported sampling method. Use 'mcmc', 'vi', or 'pathfinder'.")
     
     return m
 

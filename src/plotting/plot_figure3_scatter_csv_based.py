@@ -17,7 +17,7 @@ from pathlib import Path
 # Configuration
 ANALYSIS_DIR = '/Users/kiante/Documents/2023_choicehistory_HSSM/src/analysis'
 MODEL_SUMMARIES_DIR = '/Users/kiante/Documents/2023_choicehistory_HSSM/results/figures/model_summaries'
-DATA_PATH = '/Users/kiante/Documents/2023_choicehistory_HSSM/data/ibl_trainingChoiceWorld_20250310.csv'
+DATA_PATH = '/Users/kiante/Documents/2023_choicehistory_HSSM/data/ibl_trainingChoiceWorld_20250819.csv'
 OUTPUT_DIR = '/Users/kiante/Documents/2023_choicehistory_HSSM/results/figures'
 
 def find_latest_model_files():
@@ -104,9 +104,12 @@ def load_and_preprocess_data(file_path):
     print(f"Loading behavioral data from {file_path}")
     mouse_data = pd.read_csv(file_path)
     
-    # Create repetition variable (1 if current response equals previous response)
-    mouse_data['repeat'] = np.where(mouse_data.response == mouse_data.prevresp, 1, 0)
-    mouse_data['stimrepeat'] = np.where(mouse_data.groupby(['subj_idx'])['signed_contrast'].shift(1) == mouse_data['signed_contrast'], 1, 0)
+    # Recode prevresp from {-1, 1} to {0, 1} to match response coding
+    mouse_data['prevresp_recoded'] = mouse_data['prevresp'].map({-1.0: 0.0, 1.0: 1.0})
+    
+    # Recalculate repeat variable with correct coding
+    mouse_data['repeat'] = np.where(mouse_data['response'] == mouse_data['prevresp_recoded'], 1, 0)
+    print(f"Recoded prevresp and recalculated repeat variable")
 
     # Clean data
     mouse_data = mouse_data.dropna(subset=['rt', 'response', 'prevresp'])
@@ -117,7 +120,7 @@ def load_and_preprocess_data(file_path):
 
 def calculate_repeat_rates(data):
     """Calculate repetition rates by participant."""
-    repeat_rates = data.groupby(['subj_idx'])[['repeat', 'stimrepeat']].mean().reset_index()
+    repeat_rates = data.groupby(['subj_idx'])['repeat'].mean().reset_index()
     # Create a sequential participant_id for merging with model parameters
     repeat_rates['participant_id'] = range(len(repeat_rates))
     print(f"Calculated repeat rates for {len(repeat_rates)} participants")
@@ -153,10 +156,10 @@ def extract_csv_parameters(df, param_pattern):
     
     # Look for parameters matching the pattern
     if param_pattern == 'z_prevresp|participant_id':
-        # Look for z parameters with previous response effect - format: z_prevresp_cat|participant_id[N, prev_right]
+        # Look for z parameters with previous response effect - format: "z_prevresp_cat|participant_id[N, prev_right]"
         param_rows = df[df['index'].str.contains('z_prevresp_cat\|participant_id\[\d+, prev_right\]', na=False, regex=True)]
     elif param_pattern == 'v_prevresp|participant_id':
-        # Look for v parameters with previous response effect - format: v_prevresp_cat|participant_id[N, prev_right]
+        # Look for v parameters with previous response effect - format: "v_prevresp_cat|participant_id[N, prev_right]"
         param_rows = df[df['index'].str.contains('v_prevresp_cat\|participant_id\[\d+, prev_right\]', na=False, regex=True)]
     else:
         print(f"Unknown parameter pattern: {param_pattern}")
@@ -174,9 +177,9 @@ def extract_csv_parameters(df, param_pattern):
         param_name = row['index']
         param_mean = row['mean']
         
-        # Extract participant ID number from parameter name like 'z_prevresp_cat|participant_id[2, prev_right]'
+        # Extract participant ID number from parameter name like '"z_prevresp_cat|participant_id[2, prev_right]"'
         import re
-        match = re.search(r'participant_id\[(\d+),', param_name)
+        match = re.search(r'participant_id\[(\d+), prev_right\]', param_name)
         if match:
             participant_id = int(match.group(1))
             participant_estimates.append({
@@ -358,9 +361,8 @@ def create_model_type_scatter_plot(model_data_list, model_type, output_path):
             # Add reference line at 0.5 (no bias)
             ax.axhline(y=0.5, color='gray', linestyle='--', linewidth=2, alpha=0.7)
             
-            # Set consistent limits
-            ax.set_xlim(-2, 2)
-            ax.set_ylim(0.50, 0.65)
+            # Let x-axis scale freely based on data, set y-axis for repeat rate range
+            ax.set_ylim(0.47, 0.63)  # Adjusted for corrected repeat rate range: [0.48, 0.62]
             
             # Remove grid lines
             ax.grid(False)
