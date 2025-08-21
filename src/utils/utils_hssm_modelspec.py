@@ -130,10 +130,19 @@ def make_model_centered(data, mname_full):
     return hssm.HSSM(
         data=data, model=base_model, loglik_kind=spec_loglik_kind,
         include=current_model_spec, noncentered=False,
+        model_config={
+            "bounds": {
+                "v": (-3.0, 3.0),
+                "a": (0.3, 3.0), 
+                "z": (0.2, 0.8),
+                "t": (0.08, 1.8),
+                "theta": (-2.0, 2.0)  # Add bounds for theta if using angle model
+            }
+        },
         lapse=None,
         p_outlier=None,
         process_initvals=True,
-        initval_jitter=0.001,
+        initval_jitter=0.01,
         # lapse=bmb.Prior("Uniform", lower=0.0, upper=5.0),
         # p_outlier={
         #     "formula": "p_outlier ~ 1 + (1 | participant_id)", "link": "logit",
@@ -250,10 +259,19 @@ def make_model_noncentered(data, mname_full):
     return hssm.HSSM(
         data=data, model=base_model, loglik_kind=spec_loglik_kind,
         include=current_model_spec, noncentered=True,
+        model_config={
+            "bounds": {
+                "v": (-3.0, 3.0),
+                "a": (0.3, 3.0), 
+                "z": (0.2, 0.8),
+                "t": (0.08, 2.0),
+                "theta": (-2.0, 2.0)  # Add bounds for theta if using angle model
+            }
+        },
         lapse=None,
         p_outlier=None,
         process_initvals=True,
-        initval_jitter=0.001,
+        initval_jitter=0.01,
         # lapse=bmb.Prior("Uniform", lower=0.0, upper=5.0),
         # p_outlier={
         #     "formula": "p_outlier ~ 1 + (1 | participant_id)", "link": "logit",
