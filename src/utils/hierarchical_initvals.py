@@ -45,54 +45,54 @@ def _get_noncentered_initvals(model_name, n_subjects=None):
     
     # Base DDM parameters for NON-CENTERED parameterization (actual HSSM structure)
     # Uses Intercept + _sigma + _offset naming convention
-    # Values based on fitted results from ddm_nohist, ddm_prevresp_v, ddm_prevresp_z
+    # Values based on fitted results from angle_prevresp_zv_pathfinder_20250820_180938
     base_initvals = {
         # v parameter (drift rate) - fixed effects and random effects
-        'v_Intercept': np.array(-0.02, dtype=np.float32),  # Fixed intercept
-        'v_signed_contrast': np.array(0.025, dtype=np.float32),  # Fixed contrast effect
-        'v_1|participant_id_sigma': np.array(0.07, dtype=np.float32),  # Random effect variance
-        'v_1|participant_id_offset': np.random.normal(0, 0.01, n_subjects).astype(np.float32),  # Subject deviations (small)
-        'v_signed_contrast|participant_id_sigma': np.array(0.002, dtype=np.float32),  # Contrast variance
-        'v_signed_contrast|participant_id_offset': np.random.normal(0, 0.001, n_subjects).astype(np.float32),  # Contrast deviations
+        'v_Intercept': np.array(-0.074, dtype=np.float32),  # Fixed intercept (from fitted mu)
+        'v_signed_contrast': np.array(1.234, dtype=np.float32),  # Fixed contrast effect (from fitted mu)
+        'v_1|participant_id_sigma': np.array(0.267, dtype=np.float32),  # Random effect variance (from fitted)
+        'v_1|participant_id_offset': np.random.normal(0, 0.1, n_subjects).astype(np.float32),  # Subject deviations
+        'v_signed_contrast|participant_id_sigma': np.array(1.536, dtype=np.float32),  # Contrast variance (from fitted)
+        'v_signed_contrast|participant_id_offset': np.random.normal(0, 0.1, n_subjects).astype(np.float32),  # Contrast deviations
         
-        # z parameter (starting point) - should be around 0.5
-        'z_Intercept': np.array(0.47, dtype=np.float32),  # Fixed starting point
-        'z_1|participant_id_sigma': np.array(0.05, dtype=np.float32),  # Random effect variance
-        'z_1|participant_id_offset': np.random.normal(0, 0.01, n_subjects).astype(np.float32),  # Subject deviations
+        # z parameter (starting point) - transformed from fitted results
+        'z_Intercept': np.array(0.551, dtype=np.float32),  # Fixed starting point (0.205 -> sigmoid)
+        'z_1|participant_id_sigma': np.array(0.338, dtype=np.float32),  # Random effect variance (from fitted)
+        'z_1|participant_id_offset': np.random.normal(0, 0.1, n_subjects).astype(np.float32),  # Subject deviations
         
-        # t parameter (non-decision time) - from fitted: ~0.1
-        't_Intercept': np.array(0.1, dtype=np.float32),  # Fixed NDT
-        't_1|participant_id_sigma': np.array(0.005, dtype=np.float32),  # Random effect variance
-        't_1|participant_id_offset': np.random.normal(0, 0.002, n_subjects).astype(np.float32),  # Subject deviations
+        # t parameter (non-decision time) - transformed from fitted results
+        't_Intercept': np.array(0.139, dtype=np.float32),  # Fixed NDT (exp(0.571) -> scaled)
+        't_1|participant_id_sigma': np.array(0.296, dtype=np.float32),  # Random effect variance (from fitted)
+        't_1|participant_id_offset': np.random.normal(0, 0.1, n_subjects).astype(np.float32),  # Subject deviations
         
-        # a parameter (boundary separation) - from fitted: ~0.645
-        'a_Intercept': np.array(0.645, dtype=np.float32),  # Fixed boundary
-        'a_1|participant_id_sigma': np.array(0.014, dtype=np.float32),  # Random effect variance
-        'a_1|participant_id_offset': np.random.normal(0, 0.007, n_subjects).astype(np.float32),  # Subject deviations
+        # a parameter (boundary separation) - from fitted results
+        'a_Intercept': np.array(1.396, dtype=np.float32),  # Fixed boundary (from fitted mu)
+        'a_1|participant_id_sigma': np.array(0.291, dtype=np.float32),  # Random effect variance (from fitted)
+        'a_1|participant_id_offset': np.random.normal(0, 0.1, n_subjects).astype(np.float32),  # Subject deviations
     }
     
     # Add model-specific parameters based on fitted results (NON-CENTERED)
     if 'prevresp_v' in model_name or 'prevresp_zv' in model_name:
         # prevresp effects use fixed effect + sigma + offset structure
         base_initvals.update({
-            'v_prevresp_cat': np.array([-0.003], dtype=np.float32),  # Fixed effect (array for categories)
-            'v_prevresp_cat|participant_id_sigma': np.array([0.23], dtype=np.float32),  # Random effect variance
-            'v_prevresp_cat|participant_id_offset': np.random.normal(0, 0.01, (n_subjects, 1)).astype(np.float32),  # Subject deviations
+            'v_prevresp_cat': np.array([-1.777], dtype=np.float32),  # Fixed effect (from fitted mu)
+            'v_prevresp_cat|participant_id_sigma': np.array([0.864], dtype=np.float32),  # Random effect variance (from fitted)
+            'v_prevresp_cat|participant_id_offset': np.random.normal(0, 0.2, (n_subjects, 1)).astype(np.float32),  # Subject deviations
         })
     
     if 'prevresp_z' in model_name or 'prevresp_zv' in model_name:
         base_initvals.update({
-            'z_prevresp_cat': np.array([0.021], dtype=np.float32),  # Fixed effect (array for categories)
-            'z_prevresp_cat|participant_id_sigma': np.array([0.024], dtype=np.float32),  # Random effect variance
-            'z_prevresp_cat|participant_id_offset': np.random.normal(0, 0.01, (n_subjects, 1)).astype(np.float32),  # Subject deviations
+            'z_prevresp_cat': np.array([-0.269], dtype=np.float32),  # Fixed effect (from fitted mu)
+            'z_prevresp_cat|participant_id_sigma': np.array([0.229], dtype=np.float32),  # Random effect variance (from fitted)
+            'z_prevresp_cat|participant_id_offset': np.random.normal(0, 0.1, (n_subjects, 1)).astype(np.float32),  # Subject deviations
         })
     
     # Add theta for angle models
     if model_name.startswith('angle'):
         base_initvals.update({
-            'theta_Intercept': np.array(0.01, dtype=np.float32),  # Fixed angle parameter
-            'theta_1|participant_id_sigma': np.array(0.8, dtype=np.float32),  # Random effect variance
-            'theta_1|participant_id_offset': np.random.normal(0, 0.05, n_subjects).astype(np.float32),  # Subject deviations
+            'theta_Intercept': np.array(-1.7, dtype=np.float32),  # Fixed angle parameter (from fitted mu)
+            'theta_1|participant_id_sigma': np.array(0.95, dtype=np.float32),  # Random effect variance (from fitted)
+            'theta_1|participant_id_offset': np.random.normal(0, 0.2, n_subjects).astype(np.float32),  # Subject deviations
         })
     
     return base_initvals
@@ -106,45 +106,45 @@ def _get_centered_initvals(model_name, n_subjects=None):
     # Base DDM parameters for centered models - values based on fitted results
     base_initvals = {
         # v parameter (drift rate) - group means and subject-specific values
-        'v_1|participant_id_mu': -0.02,  # From fitted: -0.095 to 0.052, start slightly negative
-        'v_signed_contrast|participant_id_mu': 0.025,  # Consistent across fitted models: ~0.025
+        'v_1|participant_id_mu': -0.074,  # From fitted results
+        'v_signed_contrast|participant_id_mu': 1.234,  # Updated to match fitted results
         # v parameter - subject-specific deviations around the group means
-        'v_1|participant_id': np.random.normal(-0.02, 0.03, n_subjects),  # Small variation around group mean
-        'v_signed_contrast|participant_id': np.random.normal(0.025, 0.001, n_subjects),  # Very small subject variation
+        'v_1|participant_id': np.random.normal(-0.074, 0.267, n_subjects),  # Variation around group mean
+        'v_signed_contrast|participant_id': np.random.normal(1.234, 1.536, n_subjects),  # Subject variation from fitted
         
-        # z parameter (starting point) - should be around 0.5 (neutral starting point)
-        'z_1|participant_id_mu': 0.47,  # Close to 0.5 as expected for starting point
-        'z_1|participant_id': np.random.normal(0.47, 0.02, n_subjects),  # Small variation around group mean
+        # z parameter (starting point) - transformed from fitted results
+        'z_1|participant_id_mu': 0.551,  # Updated to match fitted results (transformed)
+        'z_1|participant_id': np.random.normal(0.551, 0.338, n_subjects),  # Variation around group mean
         
-        # t parameter (non-decision time) - fitted value ~0.1
-        't_1|participant_id_mu': 0.1,  # Consistent fitted value
-        't_1|participant_id': np.random.normal(0.1, 0.002, n_subjects),  # Very small variation
+        # t parameter (non-decision time) - transformed from fitted results
+        't_1|participant_id_mu': 0.139,  # Updated fitted value (transformed)
+        't_1|participant_id': np.random.normal(0.139, 0.296, n_subjects),  # Variation from fitted
         
-        # a parameter (boundary separation) - fitted value ~0.645
-        'a_1|participant_id_mu': 0.645,  # From fitted results
-        'a_1|participant_id': np.random.normal(0.645, 0.007, n_subjects),  # Small variation
+        # a parameter (boundary separation) - from fitted results
+        'a_1|participant_id_mu': 1.396,  # Updated from fitted results
+        'a_1|participant_id': np.random.normal(1.396, 0.291, n_subjects),  # Variation from fitted
     }
     
     # Add model-specific parameters based on fitted results
     if 'prevresp_v' in model_name or 'prevresp_zv' in model_name:
         base_initvals.update({
             # From fitted results: prevresp effects on v have wide subject variation
-            'v_prevresp_cat|participant_id_mu': -0.003,  # Close to fitted group mean
-            'v_prevresp_cat|participant_id': np.random.normal(-0.003, 0.1, n_subjects),  # Subject effects range ~-0.3 to +0.6
+            'v_prevresp_cat|participant_id_mu': -1.777,  # From fitted group mean
+            'v_prevresp_cat|participant_id': np.random.normal(-1.777, 0.864, n_subjects),  # Subject effects from fitted variance
         })
     
     if 'prevresp_z' in model_name or 'prevresp_zv' in model_name:
         base_initvals.update({
-            # From fitted results: prevresp effects on z are smaller
-            'z_prevresp_cat|participant_id_mu': 0.021,  # From fitted: 0.021
-            'z_prevresp_cat|participant_id': np.random.normal(0.021, 0.012, n_subjects),  # Subject effects range ~-0.04 to +0.05
+            # From fitted results: prevresp effects on z
+            'z_prevresp_cat|participant_id_mu': -0.269,  # From fitted group mean
+            'z_prevresp_cat|participant_id': np.random.normal(-0.269, 0.229, n_subjects),  # Subject effects from fitted variance
         })
     
     # Add theta for angle models
     if model_name.startswith('angle'):
         base_initvals.update({
-            'theta_1|participant_id_mu': -0.09,  # Reasonable middle value for angle parameter
-            'theta_1|participant_id': np.random.normal(0.01, 0.015, n_subjects),  # Moderate variation
+            'theta_1|participant_id_mu': -1.7,  # From fitted group mean
+            'theta_1|participant_id': np.random.normal(-1.7, 0.95, n_subjects),  # Variation from fitted
         })
     
     return base_initvals

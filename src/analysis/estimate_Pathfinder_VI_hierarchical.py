@@ -123,16 +123,16 @@ print(f"Analysis includes {mouse_data['participant_id'].nunique()} mice and {len
 
 mouse_data_limited = mouse_data.copy()
 
-# %% specify HSSM models
+# %% specify HSSM models - start with just one for testing
 model_names = [
     "ddm_nohist",
     "ddm_prevresp_v",
     "ddm_prevresp_z", 
-    "ddm_prevresp_zv",
+    "ddm_prevresp_zv",  # Test this one first
     "angle_nohist",
     "angle_prevresp_v",
     "angle_prevresp_z",
-    "angle_prevresp_zv",
+    "angle_prevresp_zv",  # Comment out until first model works
 ]
 
 # %% Pathfinder VI Sampling Configuration
@@ -142,8 +142,8 @@ print("="*60)
 
 # Pathfinder parameters - optimized for hierarchical models
 pathfinder_params = {
-    'pathfinder_draws': 2000,                   # Number of samples to draw from pathfinder approximation
-    'pathfinder_num_paths': 16,                  # Number of optimization paths (8-16 recommended)
+    'pathfinder_num_paths': 8,                  # Number of optimization paths (8-16 recommended)
+    # 'pathfinder_num_draws': 500,                   # Number of samples to draw from pathfinder approximation
     # 'pathfinder_max_lbfgs_iters': 1000,         # Maximum iterations per path (corrected parameter name)
     # 'pathfinder_num_elbo_draws': 25,            # Number of draws for ELBO estimation (corrected parameter name)
     # 'pathfinder_ftol': 1e-05,                   # Function tolerance for L-BFGS (default: 1e-05)
@@ -165,8 +165,8 @@ if use_custom_initvals:
         n_subjects = mouse_data_limited['participant_id'].nunique()
         custom_initvals = get_single_initvals(
             model_name=name, 
-            parameterization='noncentered',  # Match the default in make_model
-            jitter_scale=0.001,
+            parameterization='centered',  # Match the default in make_model
+            jitter_scale=0.000,
             n_subjects=n_subjects
         )
         

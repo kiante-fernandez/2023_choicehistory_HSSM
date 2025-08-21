@@ -196,8 +196,8 @@ def run_model(data, modelname, mypath, trace_id=0, sampling_method="mcmc", plot_
              vi_grad_clip=None, vi_convergence_tolerance=None, vi_convergence_every=None,
              vi_min_iterations=None, 
              # Pathfinder parameters
-             pathfinder_num_paths=4, pathfinder_num_draws=1000, pathfinder_num_single_draws=1000,
-             pathfinder_max_lbfgs_iters=1000, **kwargs):
+             pathfinder_num_paths=8, pathfinder_num_draws=2000, pathfinder_num_single_draws=2000,
+             pathfinder_max_lbfgs_iters=2000, **kwargs):
     """
     Run HSSM model with trace plotting, PPC generation, and unique timestamped file naming.
     
@@ -644,10 +644,57 @@ def run_model(data, modelname, mypath, trace_id=0, sampling_method="mcmc", plot_
         
         print(f"Pathfinder settings: {pathfinder_args}")
         
-        # Run Pathfinder VI
+        # Run Pathfinder VI with error handling for broadcasting issues
         with m.pymc_model:
-            inference_data = pmx.fit(method="pathfinder", **pathfinder_args)
+            try:
+                inference_data = pmx.fit(method="pathfinder", **pathfinder_args)
+            except (ValueError, RuntimeError) as e:
+                if any(phrase in str(e) for phrase in ["Runtime broadcasting not allowed", "broadcasting error", "distinct dimension length"]):
+                    print("WARNING: Encountered broadcasting error during trace conversion.")
+                    print("This is a known issue with Pathfinder on complex hierarchical models.")
+                    print("Attempting fallback with reduced num_draws_per_path...")
+                    
+                    # Try with reduced draws per path to avoid broadcasting issues
+                    fallback_args = pathfinder_args.copy()
+                    fallback_args["num_draws_per_path"] = min(250, fallback_args.get("num_draws_per_path", 1000))
+                    fallback_args["num_draws"] = min(500, fallback_args.get("num_draws", 2000))
+                    fallback_args["num_paths"] = min(4, fallback_args.get("num_paths", 8))
+                    
+                    print(f"Fallback Pathfinder settings: {fallback_args}")
+                    
+                    try:
+                        inference_data = pmx.fit(method="pathfinder", **fallback_args)
+                        print("Fallback successful!")
+                    except Exception as e2:
+                        print(f"Fallback also failed: {e2}")
+                        print("Attempting conservative Pathfinder configuration...")
+                        
+                        # Very conservative configuration as last resort
+                        conservative_args = {
+                            "num_paths": 4,
+                            "num_draws": 200,
+                            "num_draws_per_path": 100,
+                            "maxiter": 300
+                        }
+                        
+                        print(f"Conservative Pathfinder settings: {conservative_args}")
+                        try:
+                            inference_data = pmx.fit(method="pathfinder", **conservative_args)
+                            print("Conservative configuration successful!")
+                        except Exception as e3:
+                            print(f"Conservative configuration also failed: {e3}")
+                            print("Pathfinder VI appears to be incompatible with this model complexity.")
+                            print("Consider using MCMC (nuts) or standard VI (advi) instead.")
+                            # Return None to indicate failure
+                            return None
+                else:
+                    raise e
         
+        # Check if inference was successful
+        if inference_data is None:
+            print("Pathfinder VI failed - returning None")
+            return None
+            
         end_time = time.time()
         runtime = end_time - start_time
         print(f"Pathfinder VI completed in {runtime:.2f} seconds ({runtime/60:.2f} minutes)")

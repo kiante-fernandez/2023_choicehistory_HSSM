@@ -19,11 +19,11 @@ from sklearn.preprocessing import StandardScaler
 sys.path.append('/Users/kiante/Documents/2023_choicehistory_HSSM/src')
 from utils.utils_hssm_modelspec import make_model
 from utils.utils_hssm import run_model
-from utils.hierarchical_initvals import get_jittered_initvals
+from utils.hierarchical_initvals import get_single_initvals
 # Set up file paths
 script_dir = os.path.dirname(os.path.realpath(__file__))
 
-def apply_rt_exclusions(data, lower_bound=0.1, iqr_multiplier=2):
+def apply_rt_exclusions(data, iqr_multiplier=2):
     """Apply RT exclusions per subject"""
     
     # Apply IQR-based exclusion per subject
@@ -141,9 +141,9 @@ model_names = [
     "angle_prevresp_zv",
 ]
 
-ddm_models = {name: make_model(mouse_data, name) for name in model_names}
+#ddm_models = {name: make_model(mouse_data, name) for name in model_names}
 #%% 
-np.random.seed(2025)  # For reproducibility
+#np.random.seed(2025)  # For reproducibility
 all_subjects = mouse_data_limited['participant_id'].unique()
 selected_subjects = np.random.choice(all_subjects, size=10, replace=False)
 print(f"Selected subjects for contrast specification testing: {selected_subjects}")
@@ -155,6 +155,7 @@ mouse_data_subset = mouse_data_subset[mouse_data_subset['participant_id'].isin(s
 
 print(f"Full dataset includes {len(mouse_data_subset)} trials from {mouse_data_subset['participant_id'].nunique()} subjects")
 
+mouse_data_limited = mouse_data_subset
 # %% Run Variational Inference (VI)
 print("\n" + "="*60)
 print("RUNNING VARIATIONAL INFERENCE")
@@ -162,40 +163,72 @@ print("="*60)
 
 # VI configuration parameters
 vi_config = {
-    "vi_niter": 100000,  # Increased for better convergence
-    "vi_method": "fullrank_advi",  # Recommended method
-    "vi_optimizer": "adam",  # More robust optimizer
-    "vi_learning_rate": 0.00015,  # Optimal rate from historical analysis
-    "vi_scheduler": "plateau",  # Use ReduceLROnPlateau scheduler
+    "vi_niter": 200000,
+    "vi_method": "fullrank_advi",
+    "vi_optimizer": "adam",
+    
+    # Using the low learning rate based on your analysis of the problem
+    "vi_learning_rate": 1.5e-5,  # 0.000015
+
+    # Switched to the proactive exponential scheduler for smooth, predictable decay
+    "vi_scheduler": "exponential",
     "scheduler_params": {
-        "factor": 0.5,      # Reduce LR by half when loss plateaus
-        "patience": 1000,   # Wait 1000 iterations before reducing
-        "min_lr": 1e-6,     # Don't go below this learning rate
-        "cooldown": 50,   # Wait 50 iterations after reduction
-        "verbose": True     # Print scheduler actions
+        # This gamma provides a very slow, continuous decay at each step
+        "gamma": 0.99995
     },
-    "vi_grad_clip": 0.5,                    # Gradient clipping to prevent exploding gradients
-    "vi_convergence_tolerance": 0.01,       # More lenient for noisy datasets (10x default)
-    "vi_convergence_every": 500,            # Check less frequently to avoid noisy plateau detection  
-    "vi_min_iterations": 15000              # Guarantee at least 25,000 iterations before convergence checking
+    
+    # Strong gradient clipping is essential to prevent loss spikes
+    "vi_grad_clip": 1.0,
+    # A strict tolerance for a well-converged model
+    "vi_convergence_tolerance": 1e-6,
+    "vi_convergence_every": 1000,
+    # Guaranteeing enough iterations for the slow decay to find a good minimum
+    "vi_min_iterations": 40000
 }
 
 print(f"VI Configuration:")
 for key, value in vi_config.items():
     print(f"  {key}: {value}")
 print()
+# Option to use custom initial values (matching MCMC script)
+use_custom_initvals = True
 
 # Run VI for each model
 vi_results = {}
 for i, name in enumerate(model_names, 1):
     print(f"Running VI for model {i}/{len(model_names)}: {name}")
-    vi_results[name] = run_model(
-        mouse_data_limited, 
-        name, 
-        script_dir, 
-        sampling_method="vi",
-        **vi_config
-    )
+    
+    if use_custom_initvals:
+        print(f"Getting custom initial values for {name}...")
+        
+        # Get single set of initial values (HSSM VI will handle chains jitter internally)
+        n_subjects = mouse_data_limited['participant_id'].nunique()
+        custom_initvals = get_single_initvals(
+            model_name=name, 
+            parameterization='centered',  # Match the default in make_model
+            jitter_scale=0,
+            n_subjects=n_subjects
+        )
+        print(f"Custom initial values for {name}: {custom_initvals}")
+        print(f"Running VI for {name} with custom initial values...")
+        vi_results[name] = run_model(
+            mouse_data_limited, 
+            name, 
+            script_dir, 
+            sampling_method="vi",
+            initvals=custom_initvals,
+            **vi_config
+        )
+    else:
+        print(f"Running VI for {name} with default initial values...")
+        vi_results[name] = run_model(
+            mouse_data_limited, 
+            name, 
+            script_dir, 
+            sampling_method="vi",
+            **vi_config
+        )
+    
     print(f"Completed VI for {name}\n")
 
 print("All VI runs completed!")
