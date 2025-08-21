@@ -17,7 +17,7 @@ import bambi as bmb
 # Main Model Selection Function
 # =====================================================================================
 
-def make_model(data, mname_full, parameterization='centered'):
+def make_model(data, mname_full, parameterization='noncentered'):
     """
     Primary wrapper function to create an HSSM model.
 
@@ -66,8 +66,8 @@ def make_model_centered(data, mname_full):
     else:
         base_model, *mname_parts = mname_full.split('_')
         mname = "_".join(mname_parts)
-        spec_loglik_kind = "approx_differentiable"
-        #spec_loglik_kind = "analytical"
+        #spec_loglik_kind = "approx_differentiable"
+        spec_loglik_kind = "analytical"
 
 
     print(f'Base model: {base_model}')
@@ -139,18 +139,16 @@ def make_model_centered(data, mname_full):
                 "theta": (-2.0, 2.0)  # Add bounds for theta if using angle model
             }
         },
-        lapse=None,
-        p_outlier=None,
-        process_initvals=True,
-        initval_jitter=0.01,
-        # lapse=bmb.Prior("Uniform", lower=0.0, upper=5.0),
-        # p_outlier={
-        #     "formula": "p_outlier ~ 1 + (1 | participant_id)", "link": "logit",
-        #     "prior": {
-        #         "Intercept": {"name": "Normal", "mu": -2.3, "sigma": 1.0},
-        #         "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "sigma": 0.2}}
-        #     }
-        # }
+        # process_initvals=True,
+        # initval_jitter=0.01,
+        lapse=bmb.Prior("Uniform", lower=0.0, upper=5.0),
+        p_outlier={
+            "formula": "p_outlier ~ 1 + (1 | participant_id)", "link": "identity",
+            "prior": {
+                "Intercept": {"name": "Beta", "alpha": 4, "beta": 36},
+                "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.2}}
+            }
+        }
     )
 
 # =====================================================================================
@@ -175,8 +173,8 @@ def make_model_noncentered(data, mname_full):
     else:
         base_model, *mname_parts = mname_full.split('_')
         mname = "_".join(mname_parts)
-        spec_loglik_kind = "approx_differentiable"
-        #spec_loglik_kind = "analytical"
+        #spec_loglik_kind = "approx_differentiable"
+        spec_loglik_kind = "analytical"
 
     print(f'Base model: {base_model}')
     print(f'Model name: {mname}')
@@ -252,7 +250,7 @@ def make_model_noncentered(data, mname_full):
             "name": "theta", "formula": "theta ~ 1 + (1 | participant_id)", "link": "identity",
             "prior": {
                 "Intercept": {"name": "Normal", "mu": -1.0, "sigma": 1.0},
-                "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.8}}
+                "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.2}}
             }
         })
 
@@ -268,16 +266,14 @@ def make_model_noncentered(data, mname_full):
                 "theta": (-2.0, 2.0)  # Add bounds for theta if using angle model
             }
         },
-        lapse=None,
-        p_outlier=None,
         process_initvals=True,
         initval_jitter=0.01,
-        # lapse=bmb.Prior("Uniform", lower=0.0, upper=5.0),
-        # p_outlier={
-        #     "formula": "p_outlier ~ 1 + (1 | participant_id)", "link": "logit",
-        #     "prior": {
-        #         "Intercept": {"name": "Normal", "mu": -1.6, "sigma": 1.0},
-        #         "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "sigma": 0.2}}
-        #     }
-        # }
+        lapse=bmb.Prior("Uniform", lower=0.0, upper=5.0),
+        p_outlier={
+            "formula": "p_outlier ~ 1 + (1 | participant_id)", "link": "identity",
+            "prior": {
+                "Intercept": {"name": "Beta", "alpha": 4, "beta": 36},
+                "1|participant_id": {"name": "Normal", "mu": 0, "sigma": {"name": "Weibull", "alpha": 1.5, "beta": 0.2}}
+            }
+        }
     )

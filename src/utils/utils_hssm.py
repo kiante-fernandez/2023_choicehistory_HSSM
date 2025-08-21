@@ -190,7 +190,7 @@ def plot_traces_func(inference_data, modelname, mypath, timestamp):
 
 
 def run_model(data, modelname, mypath, trace_id=0, sampling_method="mcmc", plot_traces=True, 
-             plot_ppc=True, ppc_n_samples=10, ppc_subject_level=True,
+             plot_ppc=False, ppc_n_samples=10, ppc_subject_level=False,
              vi_niter=100000, vi_method="fullrank_advi", vi_optimizer="adamax", 
              vi_learning_rate=0.01, vi_scheduler=None, scheduler_params=None,
              vi_grad_clip=None, vi_convergence_tolerance=None, vi_convergence_every=None,
