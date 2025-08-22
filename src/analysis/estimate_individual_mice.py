@@ -53,36 +53,21 @@ MIN_RT = 0.08
 MAX_MOVEMENT_ONSET = 5.0
 MIN_MOVEMENT_ONSET = 0.08
 
-# Model configuration - All 8 model variants
-MODELS_TO_FIT = ['ddma', 'ddmb', 'ddmc', 'ddmd', 'anglea', 'angleb', 'anglec', 'angled']
+# Model configuration - DDM models only
+MODELS_TO_FIT = ['ddma', 'ddmb', 'ddmc', 'ddmd']
 SAMPLING_CONFIG = {
     'sampler': 'nuts_numpyro',
-    'draws': 200,
-    'tune': 500,
-    'chains': 3,
-    'cores': 3,
-    # 'target_accept': 0.90
+    'draws': 400,
+    'tune': 1000,
+    'chains': 4,
+    'cores': 4,
+    'target_accept': 0.90
 }
-
-# Mice to exclude from analysis
-# EXCLUDED_MICE = [
-#     'CSHL059', 'CSHL060', 'CSHL_015', 'CSH_ZAD_017', 'DY_018', 
-#     'KS043', 'KS044', 'KS045', 'KS046', 'KS086', 'KS091', 'MFD_07', 
-#     'NR_0020', 'NYU-47', 'PL015', 'PL016', 'PL037', 'PL050', 'SWC_022', 
-#     'SWC_038', 'SWC_058', 'UCLA033', 'UCLA048', 'ZFM-01577', 'ZM_1898',
-#     'PL024', 'PL031', 'SWC_021', 'ZFM-01935', 'ZFM-04308', 'CSHL045', 
-#     'CSHL052', 'CSH_ZAD_022', 'CSH_ZAD_024', 'DY_008', 'DY_020', 'NR_0027',
-#     'CSHL049', 'CSHL053', 'CSHL047', 'KS017', 'KS094', 'NR_0019', 'ZM_2245', 
-#     'ibl_witten_27', 'DY_014', 'KS084', 'NYU-11', 'NYU-37', 'SWC_061', 
-#     'UCLA011', 'UCLA014', 'ZFM-02369', 'ibl_witten_14', 'ibl_witten_16',
-#     'CSHL054', 'SWC_053', 'SWC_054', 'UCLA017', 'ZFM-01592', 'UCLA017', 
-#     'ibl_witten_13', 'SWC_066'
-# ]
 EXCLUDED_MICE = ['']
 
 # Output directory configuration
 PROJECT_ROOT = Path('/Users/kiante/Documents/2023_choicehistory_HSSM')
-OUTPUT_DIR = PROJECT_ROOT / "results" / "figures" / "mouse_analysis"
+OUTPUT_DIR = PROJECT_ROOT / "results" / "figures" / "ddm_sdv_poutlier_mouse_analysis"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 (OUTPUT_DIR / "models").mkdir(exist_ok=True)
 (OUTPUT_DIR / "summaries").mkdir(exist_ok=True)
@@ -138,11 +123,12 @@ def preprocess_mouse_data(mouse_data: pd.DataFrame, mouse_id: str) -> Optional[p
     mouse_subset = mouse_data[mouse_data['subj_idx'] == mouse_id].copy()
     
     # Basic preprocessing - filter for valid trials
+    # Comment out RT exclusions to do minimal RT preprocessing
     valid_data = mouse_subset[
         (mouse_subset['movement_onset'] < MAX_MOVEMENT_ONSET) & 
-        (mouse_subset['rt'] < MAX_RT) &
-        (mouse_subset['movement_onset'] > MIN_MOVEMENT_ONSET) & 
-        (mouse_subset['rt'] > MIN_RT)
+        # (mouse_subset['rt'] < MAX_RT) &
+        (mouse_subset['movement_onset'] > MIN_MOVEMENT_ONSET) 
+        # (mouse_subset['rt'] > MIN_RT)
     ].copy()
     
     # Recode response to be -1 and 1 rather than 0 and 1 (HSSM requirement)
@@ -186,38 +172,33 @@ def create_mouse_specific_models(valid_data: pd.DataFrame) -> Dict[str, Any]:
     """
     models = {}
     
-    # Define priors based on modelspec file (adapted for single-mouse)
+    # Define priors based on modelspec file non-centered specification (adapted for single-mouse)
     v_priors = {
-        "Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1.0},
-        "signed_contrast": {"name": "Normal", "mu": 0.0, "sigma": 1.0},
-        "prevresp_cat": {"name": "Normal", "mu": 0.0, "sigma": 1.0}
+        "Intercept": {"name": "Normal", "mu": 0.0, "sigma": 0.5},
+        "signed_contrast": {"name": "Normal", "mu": 0.5, "sigma": 0.7},
+        "prevresp_cat": {"name": "Normal", "mu": -0.5, "sigma": 1.0}
     }
     
     z_priors = {
-        "Intercept": {"name": "Normal", "mu": 0.0, "sigma": 0.3},
-        "prevresp_cat": {"name": "Normal", "mu": 0.0, "sigma": 0.5}
+        "Intercept": {"name": "Beta", "alpha": 2, "beta": 2},
+        "prevresp_cat": {"name": "Normal", "mu": 0.0, "sigma": 0.2}
     }
     
-    theta_prior = {
-        "Intercept": {"name": "Normal", "mu": 0.0, "sigma": 0.5}
-    }
-    
-    # Base parameters (same for all models) - no link for simple parameters
+    # Base parameters (same for all models) using priors from modelspec
     base_specs = [
-        {"name": "t", "prior": {"name": "Normal", "mu": -1.9, "sigma": 0.3}},
-        {"name": "a", "prior": {"name": "Normal", "mu": -0.1, "sigma": 0.3}}
+        {"name": "t", "prior": {"name": "Gamma", "alpha": 2, "beta": 6}},
+        {"name": "a", "prior": {"name": "Gamma", "alpha": 2, "beta": 2}},
+        {"name": "sv", "prior": {"name": "HalfNormal", "sigma": 2}}
     ]
-    
-    # Standard lapse and outlier priors
-    lapse = bmb.Prior("Uniform", lower=0.0, upper=5.0)
     
     try:
         for model_name in MODELS_TO_FIT:
-            if model_name not in ['ddma', 'ddmb', 'ddmc', 'ddmd', 'anglea', 'angleb', 'anglec', 'angled']:
+            if model_name not in ['ddma', 'ddmb', 'ddmc', 'ddmd']:
                 logger.warning(f"Unknown model name: {model_name}")
                 continue
                 
-            base_model = "ddm" if model_name.startswith("ddm") else "angle"
+            #base_model = "ddm"  # Only DDM models
+            base_model = "ddm_sdv"  # Only DDM models
             variant = model_name[-1]  # Get the variant (a, b, c, d)
             
             # Build include specifications based on variant
@@ -234,7 +215,7 @@ def create_mouse_specific_models(valid_data: pd.DataFrame) -> Dict[str, Any]:
                 include_specs.append({
                     "name": "z", 
                     "formula": "z ~ 1", 
-                    "link": "logit",
+                    "link": "identity",
                     "prior": {"Intercept": z_priors["Intercept"]}
                 })
             elif variant == 'b':  # Contrast + previous response affecting drift rate
@@ -247,7 +228,7 @@ def create_mouse_specific_models(valid_data: pd.DataFrame) -> Dict[str, Any]:
                 include_specs.append({
                     "name": "z", 
                     "formula": "z ~ 1", 
-                    "link": "logit",
+                    "link": "identity",
                     "prior": {"Intercept": z_priors["Intercept"]}
                 })
             elif variant == 'c':  # Contrast affecting drift + previous response affecting starting point
@@ -260,7 +241,7 @@ def create_mouse_specific_models(valid_data: pd.DataFrame) -> Dict[str, Any]:
                 include_specs.append({
                     "name": "z", 
                     "formula": "z ~ 1 + prevresp_cat", 
-                    "link": "logit",
+                    "link": "identity",
                     "prior": z_priors
                 })
             elif variant == 'd':  # Both contrast + previous response affecting drift AND starting point
@@ -273,37 +254,26 @@ def create_mouse_specific_models(valid_data: pd.DataFrame) -> Dict[str, Any]:
                 include_specs.append({
                     "name": "z", 
                     "formula": "z ~ 1 + prevresp_cat", 
-                    "link": "logit",
+                    "link": "identity",
                     "prior": z_priors
                 })
             
             # Add base parameters
             include_specs.extend(base_specs)
             
-            # Add theta for angle models
-            if base_model == "angle":
-                include_specs.append({
-                    "name": "theta", 
-                    "formula": "theta ~ 1", 
-                    "link": "identity",
-                    "prior": theta_prior
-                })
-            
-            # Set p_outlier based on model type
-            p_outlier_alpha = 6
-            p_outlier_beta = 24 if base_model == "ddm" else 26
-            p_outlier = {"name": "Beta", "alpha": p_outlier_alpha, "beta": p_outlier_beta}
-            
             # Create the model
             models[model_name] = hssm.HSSM(
                 data=valid_data,
                 model=base_model,
-                loglik_kind="approx_differentiable",
+                loglik_kind="analytical",
                 include=include_specs,
-                lapse=None,
-                p_outlier=None
+                p_outlier={"name": "p_outlier", 
+                            "formula": "p_outlier ~ 1", 
+                            "link": "logit",
+                            "prior": {"Intercept": {"name": "Normal", "mu": -2.32, "sigma": 0.56}}},
             )
-            
+
+
             logger.info(f"Created {model_name} model successfully")
             
     except Exception as e:
@@ -313,28 +283,20 @@ def create_mouse_specific_models(valid_data: pd.DataFrame) -> Dict[str, Any]:
     return models
 
 
-def get_default_init_values(model_name: str = None) -> Dict[str, np.ndarray]:
-    """
-    Get default initialization values for model parameters.
+# def get_default_init_values() -> Dict[str, np.ndarray]:
+#     """
+#     Get default initialization values for DDM model parameters.
     
-    Args:
-        model_name: Name of the model to get init values for
+#     Returns:
+#         Dictionary of parameter names to initial values
+#     """
+#     # Base initialization values for DDM models
+#     base_init = {
+#         'a': np.array(1.0),              # boundary separation
+#         't': np.array(0.1),              # non-decision time
+#     }
     
-    Returns:
-        Dictionary of parameter names to initial values
-    """
-    # Base initialization values that work for all models
-    base_init = {
-        'a': np.array(1.0),              # boundary separation
-        't': np.array(0.1),              # non-decision time
-        # 'p_outlier': np.array(0.05),     # outlier probability
-    }
-    
-    # Only include theta for angle models
-    if model_name and model_name.startswith('angle'):
-        base_init['theta'] = np.array(0.0)
-    
-    return base_init
+#     return base_init
 
 def fit_models_for_mouse(models: Dict[str, Any], mouse_id: str) -> Tuple[Dict[str, Any], Dict[str, pd.DataFrame]]:
     """
