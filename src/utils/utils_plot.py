@@ -39,6 +39,24 @@ def seaborn_style():
     matplotlib.rcParams['ps.fonttype'] = 42
 
 
+def get_colors():
+    # overwrite: use same colors as in previous work
+    # see https://github.com/anne-urai/2019_Urai_choice-history-ddm/blob/master/plot_all.m#L46
+    model_colors = {
+        'ddma': 'lightgrey',  # grey
+        'ddmb': [55/256,126/256,184/256],  # Blue for v  
+        'ddmc': [77/256,175/256,74/256],  # Green for z
+        'ddmd': [52/256, 103/256, 51/256]  # Dark Green
+    }
+
+    model_names = {
+        'ddma': 'no history',
+        'ddmb': 'v',
+        'ddmc': 'z',
+        'ddmd': 'both'
+    }
+    return model_colors, model_names
+
 def figpath():
     # Retrieve absolute path of paper-behavior dir
     repo_dir = os.path.dirname(os.path.realpath(__file__))

@@ -9,9 +9,14 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
-import os
+import os, sys
 import glob
 from scipy import stats
+
+# grab the utils that are already defined
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from utils import utils_plot as tools
+tools.seaborn_style()
 
 def load_individual_comparisons(summaries_dir):
     """
@@ -204,19 +209,19 @@ def create_model_comparison_plot(df, stats_dict, output_dir):
     output_dir : str
         Directory to save the plots
     """
-    # Set up plot style to match existing theme
-    plt.rcParams.update({
-        'font.size': 12,
-        'font.family': 'Arial',
-        'axes.linewidth': 1.2,
-        'axes.spines.top': False,
-        'axes.spines.right': False,
-        'xtick.major.size': 6,
-        'ytick.major.size': 6,
-        'xtick.major.width': 1.2,
-        'ytick.major.width': 1.2,
-        'figure.dpi': 300
-    })
+    # # Set up plot style to match existing theme
+    # plt.rcParams.update({
+    #     'font.size': 12,
+    #     'font.family': 'Arial',
+    #     'axes.linewidth': 1.2,
+    #     'axes.spines.top': False,
+    #     'axes.spines.right': False,
+    #     'xtick.major.size': 6,
+    #     'ytick.major.size': 6,
+    #     'xtick.major.width': 1.2,
+    #     'ytick.major.width': 1.2,
+    #     'figure.dpi': 300
+    # })
     
     # Create figure with subplots
     fig = plt.figure(figsize=(16, 12))
@@ -228,7 +233,7 @@ def create_model_comparison_plot(df, stats_dict, output_dir):
         'ddmc': '#17A2B8',  # Cyan
         'ddmd': '#DC3545'   # Red
     }
-    
+
     # Define prettier model names
     model_names = {
         'ddma': 'DDM (no history)',
@@ -236,7 +241,8 @@ def create_model_comparison_plot(df, stats_dict, output_dir):
         'ddmc': 'Previous Response → z',
         'ddmd': 'Previous Response → z,v'
     }
-    
+
+    ####################################
     # Panel A: Distribution of ΔLOO values (relative to no-history model)
     ax1 = plt.subplot(2, 2, 1)  # Top left
     
@@ -410,6 +416,27 @@ def create_model_comparison_plot(df, stats_dict, output_dir):
     print(f"PDF version saved to: {output_path_pdf}")
     plt.close()
 
+    ##############################
+    # overwrite: use same colors as in previous work
+    # see https://github.com/anne-urai/2019_Urai_choice-history-ddm/blob/master/plot_all.m#L46
+    model_colors, model_names = tools.get_colors()
+
+    fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(5,3))
+    sns.barplot(x="model", y='delta_loo', order=['ddmc', 'ddmb', 'ddmd'],
+                ax=ax, data=stats_dict['delta_loo_df'], 
+                palette=model_colors)
+    ax.set(ylabel=r'$\Delta$' + 'LOO'.upper() + '\n(vs. no history)', 
+           xlabel='', xticklabels=['$z$', '$v_{bias}$', 'both'])
+
+    for ax in fig.axes:
+        plt.sca(ax)
+        plt.xticks(rotation=40, ha='right')
+    fig.tight_layout()
+    sns.despine(trim=False)
+    fig.savefig(os.path.join(output_dir, "model_comp_preprint.pdf"))
+
+
+
 def print_summary_statistics(stats_dict):
     """
     Print comprehensive summary statistics.
@@ -452,7 +479,12 @@ def main():
     # Define directories
     summaries_dir = "/Users/kiante/Documents/2023_choicehistory_HSSM/results/figures/mouse_analysis/summaries"
     output_dir = "/Users/kiante/Documents/2023_choicehistory_HSSM/results/figures"
-    
+    try:
+        assert os.path.exists(summaries_dir)
+    except:
+        summaries_dir = "/Users/anneurai/Documents/code/2023_choicehistory_HSSM/results/figures/mouse_analysis/summaries"
+        output_dir = "/Users/anneurai/Documents/code/2023_choicehistory_HSSM/results/figures"
+
     print("Individual Mouse Model Comparison Analysis")
     print(f"Loading data from: {summaries_dir}")
     
@@ -467,7 +499,7 @@ def main():
         create_model_comparison_plot(df, stats_dict, output_dir)
         
         # Print summary statistics
-        print_summary_statistics(stats_dict)
+        #print_summary_statistics(stats_dict)
         
         print("\n" + "="*60)
         print("ANALYSIS COMPLETE")

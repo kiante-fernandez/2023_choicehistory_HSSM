@@ -18,7 +18,7 @@ The permutation test randomly reassigns z and v parameters within each mouse acr
 iterations to test if the correlation difference is statistically significant.
 """
 
-import os
+import os, sys
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -28,10 +28,25 @@ from pathlib import Path
 import glob
 import re
 
+
+# grab the utils that are already defined
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from utils import utils_plot as tools
+tools.seaborn_style()
+
+#TODO: move this to utils_plot or another utils function and keep naming of dirs consistent across scripts
 # Configuration
 INDIVIDUAL_SUMMARIES_DIR = '/Users/kiante/Documents/2023_choicehistory_HSSM/results/figures/mouse_analysis/summaries'
 DATA_PATH = '/Users/kiante/Documents/2023_choicehistory_HSSM/data/ibl_trainingChoiceWorld_20250819.csv'
 OUTPUT_DIR = '/Users/kiante/Documents/2023_choicehistory_HSSM/results/figures'
+
+try:
+    assert os.path.exists(INDIVIDUAL_SUMMARIES_DIR)
+except:
+    INDIVIDUAL_SUMMARIES_DIR = "/Users/anneurai/Documents/code/2023_choicehistory_HSSM/results/figures/mouse_analysis/summaries"
+    DATA_PATH = '/Users/anneurai/Documents/code/2023_choicehistory_HSSM/data/ibl_trainingChoiceWorld_20250819.csv'
+    OUTPUT_DIR = "/Users/anneurai/Documents/code/2023_choicehistory_HSSM/results/figures"
+
 
 def find_individual_mouse_files():
     """
@@ -630,6 +645,253 @@ def create_ddmd_correlation_comparison_plot(model_data_list, output_dir):
     # Show plot
     plt.show()
 
+def create_ddmd_correlation_comparison_plot_anne(model_list, figpath):
+
+    """
+    Create correlation comparison plot specifically for the ddmd model (both z and v effects).
+    
+    Parameters:
+    -----------
+    model_data_list : list of dict
+        List of dictionaries containing model data
+    output_dir : str
+        Directory to save the plot
+    """
+
+    # more handy imports to keep this short
+    from utils.utils_plot import seaborn_style, corrfunc, get_colors
+    import scipy as sp
+    import utils.corrstats as corrstats
+    seaborn_style()
+    model_colors, model_names = get_colors()
+
+    md_wide = pd.DataFrame()
+    md_wide['z_prevresp'] = model_list['z_data']['param_mean']
+    md_wide['v_prevresp'] = model_list['v_data']['param_mean']
+    md_wide['repeat'] = model_list['z_data']['repeat']
+
+    fig, ax = plt.subplots(ncols=2, nrows=1, sharey=True, sharex=False, figsize=(6,3))
+    corrfunc(x=md_wide.z_prevresp, y=md_wide.repeat, ax=ax[0], color=model_colors['ddmb'])
+    ax[0].set(xlabel='History shift in $z$', ylabel='P(repeat)')
+    corrfunc(x=md_wide.v_prevresp, y=md_wide.repeat, ax=ax[1], color=model_colors['ddmc'])
+    ax[1].set(xlabel='History shift in $v_{bias}$', ylabel=' ')
+
+    # ADD STEIGERS TEST ON TOP
+    # x = repeat, y = zshift, z = dcshift
+    tstat, pval = corrstats.dependent_corr(sp.stats.spearmanr(md_wide.z_prevresp, md_wide.repeat, nan_policy='omit')[0],
+                                        sp.stats.spearmanr(md_wide.v_prevresp, md_wide.repeat, nan_policy='omit')[0],
+                                        sp.stats.spearmanr(md_wide.z_prevresp, md_wide.v_prevresp, nan_policy='omit')[0],
+                                            len(md_wide),
+                                        twotailed=True, conf_level=0.95, method='steiger')
+    deltarho = sp.stats.spearmanr(md_wide.z_prevresp, md_wide.repeat, nan_policy='omit')[0] - \
+            sp.stats.spearmanr(md_wide.v_prevresp, md_wide.repeat, nan_policy='omit')[0]
+    if pval < 0.0001:
+        fig.suptitle(r'$\Delta\rho$ = %.3f, p = < 0.0001'%(deltarho), fontsize=10)
+    else:
+        fig.suptitle(r'$\Delta\rho$ = %.3f, p = %.4f' % (deltarho, pval), fontsize=10)
+    sns.despine(trim=True)
+    plt.tight_layout()
+    fig.savefig(os.path.join(figpath, 'scatterplot_trainingchoiceworld_prevchoice_zv.pdf'))
+
+
+    # # Find ddmd model data
+    # ddmd_data = None
+    # for model_data in model_data_list:
+    #     if model_data is not None and 'z,v' in model_data['model_name']:
+    #         ddmd_data = model_data
+    #         break
+    
+    # if ddmd_data is None:
+    #     print("No ddmd model data found for correlation comparison")
+    #     return
+    
+    # z_data = ddmd_data.get('z_data', pd.DataFrame())
+    # v_data = ddmd_data.get('v_data', pd.DataFrame())
+    
+    # if z_data.empty or v_data.empty:
+    #     print("Insufficient data for ddmd correlation comparison")
+    #     return
+    
+    # # Calculate permutation test statistics
+    # perm_stats = calculate_permutation_test(z_data, v_data)
+    
+
+    
+    # # Create figure with side-by-side plots
+    # fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+    
+    # # Color scheme
+    # z_color = '#28A745'  # Green for z
+    # v_color = '#2E86AB'  # Blue for v
+    
+    # # Left panel: Z parameter correlation
+    # ax_z = axes[0]
+    # r_z, p_z = corrfunc(z_data['param_mean'], z_data['repeat'], ax=ax_z, color=z_color)
+    # ax_z.set_title('Starting Point Bias (z)\nvs Repetition Behavior', 
+    #                fontsize=14, fontweight='bold', pad=15)
+    # ax_z.set_xlabel('z Previous Response Effect', fontsize=13, fontweight='bold')
+    # ax_z.set_ylabel('P(repeat choice)', fontsize=13, fontweight='bold')
+    
+    # # Right panel: V parameter correlation  
+    # ax_v = axes[1]
+    # r_v, p_v = corrfunc(v_data['param_mean'], v_data['repeat'], ax=ax_v, color=v_color)
+    # ax_v.set_title('Drift Rate Bias (v)\nvs Repetition Behavior', 
+    #                fontsize=14, fontweight='bold', pad=15)
+    # ax_v.set_xlabel('v Previous Response Effect', fontsize=13, fontweight='bold')
+    # ax_v.set_ylabel('P(repeat choice)', fontsize=13, fontweight='bold')
+    
+    # # Right panel: Permutation test histogram
+    # ax_hist = axes[2]
+    
+    # # Check if we have valid permutation results
+    # if len(perm_stats['null_distribution']) > 0:
+    #     null_dist = perm_stats['null_distribution']
+    #     r_diff_obs = perm_stats['r_diff_obs']
+    #     p_two_tail = perm_stats['p_value_two_tail']
+        
+    #     # Create histogram of null distribution
+    #     n_bins = 50
+    #     counts, bins, patches = ax_hist.hist(null_dist, bins=n_bins, alpha=0.7, 
+    #                                        color='lightgray', edgecolor='black', 
+    #                                        linewidth=0.5, density=True)
+        
+    #     # Add vertical line for observed difference
+    #     ax_hist.axvline(r_diff_obs, color='red', linewidth=3, linestyle='-', 
+    #                    label=f'Observed difference: {r_diff_obs:.3f}')
+        
+    #     # Shade the tail area for p-value visualization (one-tailed test)
+    #     p_one_tail = perm_stats['p_value_one_tail']
+    #     if not np.isnan(p_one_tail):
+    #         # Shade only the tail in the direction of the observed difference
+    #         if r_diff_obs > 0:
+    #             # Shade positive tail (observed difference is positive)
+    #             for i, (count, bin_left, bin_right) in enumerate(zip(counts, bins[:-1], bins[1:])):
+    #                 if bin_left >= r_diff_obs:
+    #                     patches[i].set_facecolor('red')
+    #                     patches[i].set_alpha(0.3)
+    #         else:
+    #             # Shade negative tail (observed difference is negative)
+    #             for i, (count, bin_left, bin_right) in enumerate(zip(counts, bins[:-1], bins[1:])):
+    #                 if bin_right <= r_diff_obs:
+    #                     patches[i].set_facecolor('red')
+    #                     patches[i].set_alpha(0.3)
+        
+    #     # Add statistical annotations
+    #     stats_text = f"Permutation Test\n"
+    #     stats_text += f"Observed diff: {r_diff_obs:.3f}\n"
+    #     if not np.isnan(p_one_tail):
+    #         stats_text += f"p-value: {p_one_tail:.3f}"
+    #         if p_one_tail < 0.05:
+    #             stats_text += "*"
+    #         if p_one_tail < 0.01:
+    #             stats_text += "*"
+    #         if p_one_tail < 0.001:
+    #             stats_text += "*"
+    #     stats_text += f"\n{len(null_dist)} permutations"
+        
+    #     ax_hist.text(0.98, 0.98, stats_text, transform=ax_hist.transAxes, 
+    #                 fontsize=11, fontweight='bold', ha='right', va='top',
+    #                 bbox=dict(boxstyle='round,pad=0.5', facecolor='white', 
+    #                          edgecolor='red', alpha=0.9, linewidth=2))
+        
+    #     # Set axis labels and title
+    #     ax_hist.set_xlabel('Δ (ρz - ρv)', fontsize=12, fontweight='bold')
+    #     ax_hist.set_ylabel('Density', fontsize=12, fontweight='bold')
+    #     ax_hist.set_title('Permutation Test\nNull Distribution', fontsize=14, fontweight='bold', pad=15)
+        
+    #     # Add reference line at 0
+    #     ax_hist.axvline(0, color='black', linestyle='--', alpha=0.5, linewidth=1)
+        
+    # else:
+    #     # If no valid permutation results, show message
+    #     ax_hist.text(0.5, 0.5, 'Insufficient data\nfor permutation test', 
+    #                 transform=ax_hist.transAxes, ha='center', va='center', 
+    #                 fontsize=14, style='italic', color='gray')
+    #     ax_hist.set_title('Permutation Test\nNull Distribution', fontsize=14, fontweight='bold', pad=15)
+    #     ax_hist.set_xlabel('Correlation Δ', fontsize=12, fontweight='bold')
+    #     ax_hist.set_ylabel('Density', fontsize=12, fontweight='bold')
+    
+    # # Style all axes consistently
+    # for ax in axes:
+    #     # Add reference line at 0.5 for repeat rate plots (but not histogram)
+    #     if ax != ax_hist:
+    #         ax.axhline(y=0.5, color='gray', linestyle='--', linewidth=2, alpha=0.7)
+    #         ax.set_ylim(0.47, 0.63)
+        
+    #     # Remove grid and style spines
+    #     ax.grid(False)
+    #     ax.spines['top'].set_visible(False)
+    #     ax.spines['right'].set_visible(False)
+    #     ax.spines['left'].set_position(('outward', 10))
+    #     ax.spines['bottom'].set_position(('outward', 10))
+    #     ax.spines['left'].set_linewidth(1.5)
+    #     ax.spines['bottom'].set_linewidth(1.5)
+        
+    #     # Enhance tick formatting
+    #     ax.tick_params(axis='both', which='major', labelsize=11, width=1.5)
+        
+    #     # Add subtle background
+    #     ax.set_facecolor('#white')
+    
+    # # Add overall title
+    # fig.suptitle('DDM (z,v): ΔCorrelation ', 
+    #             fontsize=16, fontweight='bold', y=0.98)
+    
+    # # Add sample size information
+    # if 'n_common' in perm_stats:
+    #     fig.text(0.02, 0.02, f'Sample: {perm_stats["n_z"]} mice (z), {perm_stats["n_v"]} mice (v), {perm_stats["n_common"]} common', 
+    #              fontsize=10, style='italic', alpha=0.7)
+    # else:
+    #     fig.text(0.02, 0.02, f'Sample: {perm_stats["n_z"]} mice (z), {perm_stats["n_v"]} mice (v)', 
+    #              fontsize=10, style='italic', alpha=0.7)
+    
+    # # Adjust layout
+    # plt.tight_layout()
+    # plt.subplots_adjust(top=0.85, bottom=0.15)
+    
+    # # Save plot
+    # output_path = os.path.join(output_dir, 'figure3_individual_mouse_ddmd_correlation_comparison.png')
+    # plt.savefig(output_path, dpi=300, bbox_inches='tight', facecolor='white')
+    # plt.savefig(output_path.replace('.png', '.pdf'), bbox_inches='tight', facecolor='white')
+    # print(f"Saved ddmd correlation comparison plot to {output_path}")
+    
+    # # Print summary statistics
+    # print(f"\n{'='*60}")
+    # print("DDMD MODEL PERMUTATION TEST SUMMARY")
+    # print(f"{'='*60}")
+    # print(f"Starting Point Bias (z) correlation: r = {perm_stats['r_z']:.3f}, p = {perm_stats['p_z']:.3f}")
+    # print(f"Drift Rate Bias (v) correlation: r = {perm_stats['r_v']:.3f}, p = {perm_stats['p_v']:.3f}")
+    # print(f"Observed correlation difference (z - v): {perm_stats['r_diff_obs']:.3f}")
+    
+    # if len(perm_stats['null_distribution']) > 0:
+    #     print(f"Permutation test results (one-tailed):")
+    #     print(f"  - Number of permutations: {len(perm_stats['null_distribution'])}")
+    #     print(f"  - One-tailed p-value: {perm_stats['p_value_one_tail']:.3f}")
+    #     print(f"  - Two-tailed p-value: {perm_stats['p_value_two_tail']:.3f}")
+        
+    #     if perm_stats['p_value_one_tail'] < 0.05:
+    #         print("*** Significant difference between correlations (one-tailed, p < 0.05) ***")
+    #     else:
+    #         print("No significant difference between correlations (one-tailed test)")
+            
+    #     # Additional descriptive statistics about null distribution
+    #     null_mean = np.mean(perm_stats['null_distribution'])
+    #     null_std = np.std(perm_stats['null_distribution'])
+    #     print(f"  - Null distribution mean: {null_mean:.3f}")
+    #     print(f"  - Null distribution std: {null_std:.3f}")
+        
+    # else:
+    #     print("Permutation test could not be completed (insufficient data)")
+    
+    # if 'n_common' in perm_stats:
+    #     print(f"Sample sizes: z = {perm_stats['n_z']} mice, v = {perm_stats['n_v']} mice, common = {perm_stats['n_common']} mice")
+    # else:
+    #     print(f"Sample sizes: z = {perm_stats['n_z']} mice, v = {perm_stats['n_v']} mice")
+    
+    # # Show plot
+    # plt.show()
+
+
 def create_individual_mouse_scatter_plot(model_data_list, output_path):
     """
     Create publication-ready scatter plot for individual mouse DDM analysis.
@@ -789,10 +1051,11 @@ def main():
     output_path = os.path.join(OUTPUT_DIR, 'figure3_individual_mouse_ddm_scatter.png')
     
     # Create scatter plot
-    create_individual_mouse_scatter_plot(model_data_list, output_path)
-    
+    #create_individual_mouse_scatter_plot(model_data_list, output_path)
+    create_ddmd_correlation_comparison_plot_anne(model_data_list[3], OUTPUT_DIR)
+
     # Create correlation comparison plot for ddmd model
-    create_ddmd_correlation_comparison_plot(model_data_list, OUTPUT_DIR)
+    # create_ddmd_correlation_comparison_plot(model_data_list, OUTPUT_DIR)
     
     print(f"\nIndividual mouse analysis complete!")
     print(f"Main plot saved to: {output_path}")
