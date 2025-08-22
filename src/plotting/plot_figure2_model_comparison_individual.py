@@ -421,7 +421,7 @@ def create_model_comparison_plot(df, stats_dict, output_dir):
     # see https://github.com/anne-urai/2019_Urai_choice-history-ddm/blob/master/plot_all.m#L46
     model_colors, model_names = tools.get_colors()
 
-    fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(5,3))
+    fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(3,3))
     sns.barplot(x="model", y='delta_loo', order=['ddmc', 'ddmb', 'ddmd'],
                 ax=ax, data=stats_dict['delta_loo_df'], 
                 palette=model_colors)

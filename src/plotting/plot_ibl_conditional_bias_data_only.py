@@ -23,9 +23,22 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import scipy.stats as stats
 
+
+# grab the utils that are already defined
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from utils import utils_plot as tools
+tools.seaborn_style()
+
 # Configuration
 DATA_PATH = '/Users/kiante/Documents/2023_choicehistory_HSSM/data/ibl_trainingChoiceWorld_20250819.csv'
 OUTPUT_DIR = '/Users/kiante/Documents/2023_choicehistory_HSSM/results/figures'
+
+try:
+    assert os.path.exists(DATA_PATH)
+except:
+    DATA_PATH = '/Users/anneurai/Documents/code/2023_choicehistory_HSSM/data/ibl_trainingChoiceWorld_20250819.csv'
+    OUTPUT_DIR = "/Users/anneurai/Documents/code/2023_choicehistory_HSSM/results/figures"
+
 
 def load_and_preprocess_data(file_path):
     """
@@ -173,22 +186,22 @@ def plot_conditional_bias_function(summary, subject_df, title="", n_quantiles=5)
     tuple: (fig, (ax1, ax2))
         Matplotlib figure and axes objects
     """
-    # Set publication-ready style matching the individual scatter plots
-    plt.rcParams.update({
-        'font.size': 12,
-        'font.family': 'Arial',
-        'axes.linewidth': 1.5,
-        'axes.spines.top': False,
-        'axes.spines.right': False,
-        'xtick.major.size': 6,
-        'ytick.major.size': 6,
-        'xtick.major.width': 1.5,
-        'ytick.major.width': 1.5,
-        'figure.dpi': 300
-    })
+    # # Set publication-ready style matching the individual scatter plots
+    # plt.rcParams.update({
+    #     'font.size': 12,
+    #     'font.family': 'Arial',
+    #     'axes.linewidth': 1.5,
+    #     'axes.spines.top': False,
+    #     'axes.spines.right': False,
+    #     'xtick.major.size': 6,
+    #     'ytick.major.size': 6,
+    #     'xtick.major.width': 1.5,
+    #     'ytick.major.width': 1.5,
+    #     'figure.dpi': 300
+    # })
     
     # Create two-panel figure
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(6, 3))
     
     # ===== LEFT PANEL: Conditional bias function =====
     
@@ -210,7 +223,7 @@ def plot_conditional_bias_function(summary, subject_df, title="", n_quantiles=5)
             fmt='-o', 
             color='black', 
             ecolor='black', 
-            capsize=5, 
+            capsize=0, 
             linewidth=4, 
             markersize=8,
             zorder=3,
@@ -218,23 +231,24 @@ def plot_conditional_bias_function(summary, subject_df, title="", n_quantiles=5)
         )
     
     # Add reference line at 0.5 (no bias)
-    ax1.axhline(y=0.5, color='gray', linestyle='--', linewidth=2, alpha=0.7, zorder=2)
+    #ax1.axhline(y=0.5, color='gray', linestyle='--', linewidth=2, alpha=0.7, zorder=2)
     
     # Customize left panel
-    ax1.set_xlabel('RT Quantile', fontsize=13, fontweight='bold')
-    ax1.set_ylabel('Choice bias\n(fraction)', fontsize=13, fontweight='bold')
-    ax1.set_title('A. Conditional Bias Function', fontsize=14, fontweight='bold', pad=15)
+    ax1.set_xlabel('RT (quantiles)')
+    ax1.set_ylabel('P(repeat)')
+    #ax1.set_title('A. Conditional Bias Function', fontsize=14, fontweight='bold', pad=15)
     
     # Set axis limits and ticks
-    ax1.set_ylim(0.40, 0.75)
+    #ax1.set_ylim(0.40, 0.75)
     ax1.set_xlim(-0.5, n_quantiles-0.5)
     
     # Set x-tick labels  
     ax1.set_xticks(range(n_quantiles))
-    ax1.set_xticklabels([f'Q{i+1}' for i in range(n_quantiles)])
-    
+    #ax1.set_xticklabels([f'Q{i+1}' for i in range(n_quantiles)])
+    ax1.set_xticklabels('')
+
     # Set y-ticks with proper spacing
-    ax1.set_yticks(np.arange(0.45, 0.76, 0.05))
+    #ax1.set_yticks(np.arange(0.5, 0.76,x 0.05))
     
     # ===== RIGHT PANEL: Raincloud plot for Fast vs Slow =====
     
@@ -369,11 +383,11 @@ def plot_conditional_bias_function(summary, subject_df, title="", n_quantiles=5)
         ax.set_facecolor('white')
     
     # Add sample size information to left panel
-    n_subjects = len(subject_df['participant_id'].unique()) if subject_df is not None else 0
-    ax1.text(0.02, 0.98, f'n = {n_subjects} subjects', 
-            transform=ax1.transAxes, fontsize=11, 
-            bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.9),
-            verticalalignment='top')
+    # n_subjects = len(subject_df['participant_id'].unique()) if subject_df is not None else 0
+    # ax1.text(0.02, 0.98, f'n = {n_subjects} subjects', 
+    #         transform=ax1.transAxes, fontsize=11, 
+    #         bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.9),
+    #         verticalalignment='top')
     
     plt.tight_layout()
     
