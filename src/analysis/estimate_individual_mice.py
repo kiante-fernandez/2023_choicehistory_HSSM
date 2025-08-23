@@ -67,7 +67,7 @@ EXCLUDED_MICE = ['']
 
 # Output directory configuration
 PROJECT_ROOT = Path('/Users/kiante/Documents/2023_choicehistory_HSSM')
-OUTPUT_DIR = PROJECT_ROOT / "results" / "figures" / "ddm_sdv_poutlier_mouse_analysis"
+OUTPUT_DIR = PROJECT_ROOT / "results" / "figures" / "V2_ddm_sdv_mouse_analysis"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 (OUTPUT_DIR / "models").mkdir(exist_ok=True)
 (OUTPUT_DIR / "summaries").mkdir(exist_ok=True)
@@ -267,10 +267,12 @@ def create_mouse_specific_models(valid_data: pd.DataFrame) -> Dict[str, Any]:
                 model=base_model,
                 loglik_kind="analytical",
                 include=include_specs,
-                p_outlier={"name": "p_outlier", 
-                            "formula": "p_outlier ~ 1", 
-                            "link": "logit",
-                            "prior": {"Intercept": {"name": "Normal", "mu": -2.32, "sigma": 0.56}}},
+                #TODO recreate the example with the Beta prior for Alex. WE want to know what 
+                #might have resulted in the prior not being passed to the model and the negative p-outlier
+                # p_outlier={"name": "p_outlier", 
+                #             "formula": "p_outlier ~ 1", 
+                #             "link": "logit",
+                #             "prior": {"Intercept": {"name": "Normal", "mu": -2.32, "sigma": 0.56}}},
             )
 
 

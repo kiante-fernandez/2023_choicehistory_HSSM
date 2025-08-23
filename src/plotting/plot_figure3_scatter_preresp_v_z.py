@@ -22,7 +22,7 @@ MODEL_PATHS = {
     'ddm_prevresp_zv': '/Users/kiante/Documents/2023_choicehistory_HSSM/results/figures/models/ddm_prevresp_zv_model.nc'
 }
 
-DATA_PATH = '/Users/kiante/Documents/2023_choicehistory_HSSM/data/ibl_trainingChoiceWorld_20250310.csv'
+DATA_PATH = '/Users/kiante/Documents/2023_choicehistory_HSSM/data/ibl_trainingChoiceWorld_20250819.csv'
 OUTPUT_DIR = '/Users/kiante/Documents/2023_choicehistory_HSSM/results/figures'
 
 def load_and_preprocess_data(file_path):

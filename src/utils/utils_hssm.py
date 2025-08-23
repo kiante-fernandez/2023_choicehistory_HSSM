@@ -502,7 +502,7 @@ def run_model(data, modelname, mypath, trace_id=0, sampling_method="mcmc", plot_
         print(f"Running VI with {vi_niter} iterations, method: {vi_method}, optimizer: {vi_optimizer}, lr: {vi_learning_rate}, {scheduler_info}, {grad_clip_info}")
         
         # Run VI with configurable parameters and convergence monitoring
-        m.vi(ignore_mcmc_start_point_defaults = True, **vi_kwargs)
+        m.vi(ignore_mcmc_start_point_defaults = False, **vi_kwargs)
         
         # Sample from VI approximation
         m.vi_approx.sample(draws=1000)
