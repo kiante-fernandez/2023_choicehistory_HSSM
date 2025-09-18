@@ -553,6 +553,7 @@ def plot_simulated_conditional_bias_function(summary, subject_df, obs_summary=No
     ax1.set_xlim(-0.5, n_quantiles-0.5)
     ax1.set_xticks(range(n_quantiles))
     ax1.set_xticklabels([f'Q{i+1}' for i in range(n_quantiles)])
+    ax1.set_xticklabels('')
     
     # Legend will be added at the figure level later
     
