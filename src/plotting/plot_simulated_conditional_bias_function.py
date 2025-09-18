@@ -22,10 +22,16 @@ import sys
 import numpy as np
 import pandas as pd
 import matplotlib
+import seaborn as sns
 matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
 import scipy.stats as stats
 import glob
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+from utils import utils_plot as tools
+## INITIALIZE A FEW THINGS
+tools.seaborn_style()
 
 # grab the utils that are already defined
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -39,11 +45,12 @@ OUTPUT_DIR = '/Users/kiante/Documents/2023_choicehistory_HSSM/results/figures'
 try:
     assert os.path.exists(SIMULATED_DATA_DIR)
 except:
-    SIMULATED_DATA_DIR = '/Users/anneurai/Documents/code/2023_choicehistory_HSSM/results/simulated_datasets'
-    OUTPUT_DIR = "/Users/anneurai/Documents/code/2023_choicehistory_HSSM/results/figures"
+    SIMULATED_DATA_DIR = '/Users/uraiae/Documents/code/2023_choicehistory_HSSM/results/simulated_datasets'
+    OUTPUT_DIR = "/Users/uraiae/Documents/code/2023_choicehistory_HSSM/results/figures"
 
 
-def load_all_simulated_data(sample_size_per_subject=1000, max_subjects=62):
+def load_all_simulated_data(sample_size_per_subject=1000, 
+                            max_subjects=62):
     """
     Load and combine all available simulated datasets.
     
@@ -152,7 +159,7 @@ def load_observational_data(subject_names):
     try:
         assert os.path.exists(IBL_DATA_PATH)
     except:
-        IBL_DATA_PATH = '/Users/anneurai/Documents/code/2023_choicehistory_HSSM/data/ibl_trainingChoiceWorld_20250819.csv'
+        IBL_DATA_PATH = '/Users/uraiae/Documents/code/2023_choicehistory_HSSM/data/ibl_trainingChoiceWorld_20250819.csv'
     
     print(f"  Loading IBL data from: {IBL_DATA_PATH}")
     
@@ -421,6 +428,7 @@ def get_model_label(model):
     }
     return model_labels.get(model, model.upper())
 
+#%%
 
 def plot_simulated_conditional_bias_function(summary, subject_df, obs_summary=None, obs_subject_df=None, n_quantiles=5):
     """
@@ -460,7 +468,8 @@ def plot_simulated_conditional_bias_function(summary, subject_df, obs_summary=No
     
     # Create two-panel figure with extra width for external legends
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
-    
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(6, 3))
+
     # ===== LEFT PANEL: Conditional bias function by model =====
     
     models_to_plot = sorted(summary['model'].unique())
@@ -472,57 +481,67 @@ def plot_simulated_conditional_bias_function(summary, subject_df, obs_summary=No
         color = model_colors.get(model, 'black')
         
         if len(model_summary) > 0:
-            # Plot individual subject lines (faint)
-            for subject in model_subjects['participant_id'].unique():
-                subject_data = model_subjects[
-                    model_subjects['participant_id'] == subject
-                ].sort_values('rt_quantile')
+            # # Plot individual subject lines (faint)
+            # for subject in model_subjects['participant_id'].unique():
+            #     subject_data = model_subjects[
+            #         model_subjects['participant_id'] == subject
+            #     ].sort_values('rt_quantile')
                 
-                if len(subject_data) == n_quantiles:  # Only if subject has all quantiles
-                    ax1.plot(subject_data['rt_quantile'], subject_data['choice_bias'], 
-                            color=color, alpha=0.01, linewidth=0.5, zorder=1)
+            #     if len(subject_data) == n_quantiles:  # Only if subject has all quantiles
+            #         ax1.plot(subject_data['rt_quantile'], subject_data['choice_bias'], 
+            #                 color=color, alpha=0.01, linewidth=0.5, zorder=1)
             
             # Plot model mean with error bars
-            ax1.errorbar(
-                model_summary['rt_quantile'], 
-                model_summary['choice_bias_mean'], 
-                yerr=model_summary['choice_bias_sem'],
-                fmt='-o', 
-                color=color, 
-                ecolor=color, 
-                capsize=2, 
-                linewidth=3, 
-                markersize=6,
-                zorder=3,
-                label=get_model_label(model)
-            )
+
+            sns.lineplot(ax=ax1, data=model_summary,
+                         x='rt_quantile', y='choice_bias_mean',
+                         color=color)
+            # ax1.errorbar(
+            #     model_summary['rt_quantile'], 
+            #     model_summary['choice_bias_mean'], 
+            #     yerr=model_summary['choice_bias_sem'],
+            #     fmt='-0', 
+            #     color=color, 
+            #     ecolor=color, 
+            #     capsize=0, 
+            #     linewidth=3, 
+            #     markersize=0,
+            #     zorder=3,
+            #     label=get_model_label(model)
+            # )
     
     # Plot observed data if available
     if obs_summary is not None and len(obs_summary) > 0:
-        # Plot individual observed subject lines (faint)
-        if obs_subject_df is not None:
-            for subject in obs_subject_df['participant_id'].unique():
-                subject_data = obs_subject_df[
-                    obs_subject_df['participant_id'] == subject
-                ].sort_values('rt_quantile')
+        # # Plot individual observed subject lines (faint)
+        # if obs_subject_df is not None:
+        #     for subject in obs_subject_df['participant_id'].unique():
+        #         subject_data = obs_subject_df[
+        #             obs_subject_df['participant_id'] == subject
+        #         ].sort_values('rt_quantile')
                 
-                if len(subject_data) == n_quantiles:  # Only if subject has all quantiles
-                    ax1.plot(subject_data['rt_quantile'], subject_data['choice_bias'], 
-                            color='black', alpha=0.05, linewidth=0.5, zorder=2)
+        #         if len(subject_data) == n_quantiles:  # Only if subject has all quantiles
+        #             ax1.plot(subject_data['rt_quantile'], subject_data['choice_bias'], 
+        #                     color='black', alpha=0.05, linewidth=0.5, zorder=2)
         
         # Plot observed mean with error bars
+        # sns.lineplot(ax=ax1, data=obs_summary,
+        #                  x='rt_quantile', y='choice_bias_mean',
+        #                  color='black', err_style='bars', 
+        #                  errorbar='choice_bias_sem',
+        #                  markers=True)
         ax1.errorbar(
             obs_summary['rt_quantile'], 
             obs_summary['choice_bias_mean'], 
             yerr=obs_summary['choice_bias_sem'],
             fmt='-o', 
             color='black', 
-            ecolor='black', 
-            capsize=2, 
-            linewidth=4, 
-            markersize=8,
-            zorder=4,
-            label='OBSERVED'
+            # ecolor='black', 
+            # capsize=2, 
+            # linewidth=4, 
+            # markersize=8,
+            # markerfacecolor='white',
+            # zorder=4,
+            # label='OBSERVED'
         )
     
     # Customize left panel
@@ -729,42 +748,47 @@ def plot_simulated_conditional_bias_function(summary, subject_df, obs_summary=No
     # Add reference line
     ax2.axhline(y=0.5, color='gray', linestyle='--', linewidth=1, alpha=0.5, zorder=0)
     
-    # Apply styling to both panels
-    for ax in [ax1, ax2]:
-        # Remove grid lines
-        ax.grid(False)
+    # # Apply styling to both panels
+    # for ax in [ax1, ax2]:
+    #     # Remove grid lines
+    #     ax.grid(False)
         
-        # Create detached axis style
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        ax.spines['left'].set_position(('outward', 10))
-        ax.spines['bottom'].set_position(('outward', 10))
-        ax.spines['left'].set_linewidth(1.5)
-        ax.spines['bottom'].set_linewidth(1.5)
+    #     # Create detached axis style
+    #     ax.spines['top'].set_visible(False)
+    #     ax.spines['right'].set_visible(False)
+    #     ax.spines['left'].set_position(('outward', 10))
+    #     ax.spines['bottom'].set_position(('outward', 10))
+    #     ax.spines['left'].set_linewidth(1.5)
+    #     ax.spines['bottom'].set_linewidth(1.5)
         
-        # Enhance tick formatting
-        ax.tick_params(axis='both', which='major', labelsize=11, width=1.5)
+    #     # Enhance tick formatting
+    #     ax.tick_params(axis='both', which='major', labelsize=11, width=1.5)
         
-        # Set white background
-        ax.set_facecolor('white')
+    #     # Set white background
+    #     ax.set_facecolor('white')
     
     plt.tight_layout()
+    tools.seaborn_style()
+    sns.despine(trim=True)
+
+    # # Create a single legend for the entire figure, positioned to the right
+    # # Collect handles and labels from the first axis (they're the same for both)
+    # handles, labels = ax1.get_legend_handles_labels()
     
-    # Create a single legend for the entire figure, positioned to the right
-    # Collect handles and labels from the first axis (they're the same for both)
-    handles, labels = ax1.get_legend_handles_labels()
+    # # Add the figure-level legend positioned to the right of both plots
+    # fig.legend(handles, labels, bbox_to_anchor=(0.98, 0.5), loc='center right', 
+    #            frameon=True, fancybox=True, shadow=True, fontsize=11)
     
-    # Add the figure-level legend positioned to the right of both plots
-    fig.legend(handles, labels, bbox_to_anchor=(0.98, 0.5), loc='center right', 
-               frameon=True, fancybox=True, shadow=True, fontsize=11)
-    
-    # Adjust layout to accommodate external legend
-    plt.subplots_adjust(right=0.82)
+    # # Adjust layout to accommodate external legend
+    # plt.subplots_adjust(right=0.82)
     
     return fig, (ax1, ax2)
 
+#%%
 
 def main():
+
+    #%%
     """Main execution function."""
     print("="*70)
     print("SIMULATED DDM CONDITIONAL BIAS FUNCTION ANALYSIS")
@@ -772,10 +796,10 @@ def main():
     
     # Load and preprocess simulated data
     try:
-        data = load_all_simulated_data()
+        data = load_all_simulated_data(sample_size_per_subject=100000)
     except Exception as e:
         print(f"Error loading data: {e}")
-        return
+        #return
     
     # Get list of subjects with simulation data
     subject_names = data['subject_name'].unique()
@@ -783,17 +807,17 @@ def main():
     # Load observational data for the same subjects
     obs_data = load_observational_data(subject_names)
     
-    # Compute conditional bias function by model
+    #%% Compute conditional bias function by model
     print("\nComputing conditional bias function by model...")
     try:
         summary, subject_df = compute_conditional_bias_function_simulated(data, n_quantiles=5)
     except Exception as e:
         print(f"Error computing conditional bias function: {e}")
-        return
+        #return
     
     if len(summary) == 0:
         print("Error: No bias function data computed!")
-        return
+        #return
     
     # Compute conditional bias function for observed data
     obs_summary = pd.DataFrame()
@@ -804,7 +828,7 @@ def main():
         except Exception as e:
             print(f"Error computing observed conditional bias function: {e}")
     
-    # Create plot
+    #%% Create plot
     print("\nCreating plot...")
     try:
         fig, _ = plot_simulated_conditional_bias_function(
@@ -868,10 +892,12 @@ def main():
         
         print(f"\nAnalysis complete!")
         
+
     except Exception as e:
         print(f"Error creating plot: {e}")
-        return
-
+        #return
+    #%%
 
 if __name__ == "__main__":
     main()
+# %%
