@@ -494,7 +494,7 @@ def plot_simulated_conditional_bias_function(summary, subject_df, obs_summary=No
             # Plot model mean with error bars
 
             sns.lineplot(ax=ax1, data=model_summary,
-                         x='rt_quantile', y='choice_bias_mean',
+                         x='rt_mean', y='choice_bias_mean',
                          color=color)
             # ax1.errorbar(
             #     model_summary['rt_quantile'], 
@@ -530,7 +530,7 @@ def plot_simulated_conditional_bias_function(summary, subject_df, obs_summary=No
         #                  errorbar='choice_bias_sem',
         #                  markers=True)
         ax1.errorbar(
-            obs_summary['rt_quantile'], 
+            obs_summary['rt_mean'], 
             obs_summary['choice_bias_mean'], 
             yerr=obs_summary['choice_bias_sem'],
             fmt='-o', 
@@ -549,11 +549,11 @@ def plot_simulated_conditional_bias_function(summary, subject_df, obs_summary=No
     ax1.set_ylabel('P(repeat)')
     # ax1.set_title('A. Model Predictions: Conditional Bias', fontweight='bold', pad=15)
     
-    # Set axis limits and ticks
-    ax1.set_xlim(-0.5, n_quantiles-0.5)
-    ax1.set_xticks(range(n_quantiles))
-    ax1.set_xticklabels([f'Q{i+1}' for i in range(n_quantiles)])
-    ax1.set_xticklabels('')
+    # # Set axis limits and ticks
+    # ax1.set_xlim(-0.5, n_quantiles-0.5)
+    # ax1.set_xticks(range(n_quantiles))
+    # ax1.set_xticklabels([f'Q{i+1}' for i in range(n_quantiles)])
+    # ax1.set_xticklabels('')
     
     # Legend will be added at the figure level later
     
